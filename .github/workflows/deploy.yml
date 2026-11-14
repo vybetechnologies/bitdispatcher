@@ -1,0 +1,32 @@
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create app and volume if missing, then deploy
+        run: |
+          if [ -n "${{ vars.FLY_ORG }}" ]; then
+            ORG_ARGS="--org ${{ vars.FLY_ORG }}"
+          else
+            ORG_ARGS=""
+          fi
+          # shellcheck disable=SC2086
+          flyctl apps create las-cad $ORG_ARGS || true
+          flyctl volumes create las_cad_data --region ord --size 3 --app las-cad --yes || true
+          flyctl deploy --app las-cad --remote-only
+
+      - name: Request TLS certificate for the custom hostname
+        # No-op until DNS points at Fly; harmless to retry on every deploy.
+        run: flyctl certs create cad.lakesareasecurity.com --app las-cad || true
