@@ -18,10 +18,17 @@ export const parts: { title: string; intro: string; ids: string[] }[] = [
   { title: 'Fire ground, crews and the police desk', intro: 'Bigger fires, who is aboard each unit, roll calls, paging volunteers, tows, the schedule, the numbers to call, areas on the map, a unit\u2019s day, patient-care reports, papers to serve and alerts to the public.',
     ids: ['alarms', 'admin-personnel', 'staffing', 'admin-qualifications', 'accountability', 'admin-paging', 'admin-tows', 'schedule', 'admin-directory', 'admin-geofences', 'admin-roads', 'admin-cameras', 'admin-alarms', 'unit-history', 'epcr', 'papers', 'public-alerts', 'admin-publicalerts'] },
   { title: 'Setting up', intro: 'Everything is set up on these screens; there is no configuration file to edit.',
-    ids: ['self-service', 'admin-setup', 'admin-golive', 'admin-support', 'admin-agencies', 'admin-operations', 'admin-units', 'admin-stations', 'admin-facilities', 'admin-calltypes', 'admin-plans', 'admin-map', 'admin-gis', 'admin-settings', 'admin-integrations', 'bitvoice', 'admin-users', 'admin-workstations', 'admin-sites', 'admin-continuity', 'admin-premises', 'admin-migrate', 'admin-guidance', 'admin-protocols', 'help'] },
+    ids: ['las-agency', 'self-service', 'admin-setup', 'admin-golive', 'admin-support', 'admin-agencies', 'admin-operations', 'admin-units', 'admin-stations', 'admin-facilities', 'admin-calltypes', 'admin-plans', 'admin-map', 'admin-gis', 'admin-settings', 'admin-integrations', 'bitvoice', 'admin-users', 'admin-workstations', 'admin-sites', 'admin-continuity', 'admin-premises', 'admin-migrate', 'admin-guidance', 'admin-protocols', 'help'] },
 ]
 
 export const manual: Article[] = [
+  { id: 'las-agency', title: 'Lakes Area Security configuration', route: '/admin/las', keys: 'LAS private security branding setup', body: `Lakes Area Security Corporation uses CAD, MDT and operational records for private security in North Dakota.
+
+The LAS configuration page previews private-security call types, run cards and unit types. An administrator can apply it only on an unused pilot with an unchanged upstream or LAS catalog. Existing numbering, map, MFA, users, GIS and cameras are preserved. Operational systems require individual reviewed changes. Back up the data volume before applying.
+
+Management and NORTHSTAR remain separate. Their accounts are not synchronized with this application. Government-only database and public-safety interfaces are unavailable. LAS answers its own company lines; public emergencies go to public responders.
+
+Powered by BitDispatcher, BioDream LLC, Apache 2.0.` },
   {
     id: 'place', title: 'Locations and the place', keys: 'location address verified estimated forced unverified map point caller place building floor apartment unit suite complex gate exception',
     body: `The incident location is the place responders go to, not only its street address.

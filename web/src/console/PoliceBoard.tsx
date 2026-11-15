@@ -76,7 +76,7 @@ function where(view: View, u: Unit, now: number): { text: string; src: string } 
   return { text: st ? st.name : 'Unknown', src: st ? 'station' : '' }
 }
 
-/** Police status and mark-outs: every car, what it is doing, where, for how long, and when it is due a status check. */
+/** Security unit status and activities: every car, what it is doing, where, for how long, and when it is due a status check. */
 export default function PoliceBoard({ view }: { view: View }) {
   const now = useNow()
   const me = useStore((s) => s.me)
@@ -111,7 +111,7 @@ export default function PoliceBoard({ view }: { view: View }) {
     </button>
   )
   return (
-    <section className="panel flex min-h-0 flex-1 flex-col" aria-label="Police status and mark-outs">
+    <section className="panel flex min-h-0 flex-1 flex-col" aria-label="Security unit status and activities">
       <div className="flex flex-wrap items-stretch gap-2 border-b border-slate-800 p-2">
         {kpi(avail.length, 'available', avail.length === 0 ? 'text-rose-300' : 'text-emerald-300')}
         {kpi(committed.length, 'on calls', 'text-orange-300', 'calls')}
@@ -191,7 +191,7 @@ export default function PoliceBoard({ view }: { view: View }) {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && <p className="p-4 text-sm text-slate-500">{units.length ? 'Nothing matches the filter.' : 'No police units on this screen: add units of a police type in Admin › Units, or choose the screen’s disciplines in Screens.'}</p>}
+        {rows.length === 0 && <p className="p-4 text-sm text-slate-500">{units.length ? 'Nothing matches the filter.' : 'No security units on this screen: add security units in Admin › Units, or choose the screen’s disciplines in Screens.'}</p>}
       </div>
     </section>
   )

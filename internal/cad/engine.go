@@ -92,6 +92,11 @@ type Engine struct {
 
 // Open opens the ledger at path, replays it and seeds a new system with default settings and call types.
 func Open(path string) (*Engine, error) {
+	return OpenWithDefaults(path, DefaultSettings(), DefaultCallTypes())
+}
+
+// OpenWithDefaults seeds only an empty ledger. Existing settings and history are replayed unchanged.
+func OpenWithDefaults(path string, settings Settings, callTypes []CallType) (*Engine, error) {
 	led, events, err := ledger.Open(path)
 	if err != nil {
 		return nil, err
@@ -108,7 +113,7 @@ func Open(path string) (*Engine, error) {
 		e.lastAt = events[n-1].At
 	}
 	if len(events) == 0 {
-		if err := e.seed(); err != nil {
+		if err := e.seedWith(settings, callTypes); err != nil {
 			led.Close()
 			return nil, err
 		}
@@ -117,12 +122,16 @@ func Open(path string) (*Engine, error) {
 }
 
 func (e *Engine) seed() error {
+	return e.seedWith(DefaultSettings(), DefaultCallTypes())
+}
+
+func (e *Engine) seedWith(settings Settings, callTypes []CallType) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if _, err := e.write(SystemActor, EvSettings, refs{}, DefaultSettings()); err != nil {
+	if _, err := e.write(SystemActor, EvSettings, refs{}, settings); err != nil {
 		return err
 	}
-	for _, ct := range DefaultCallTypes() {
+	for _, ct := range callTypes {
 		if _, err := e.write(SystemActor, EvCallTypeSaved, refs{}, ct); err != nil {
 			return err
 		}

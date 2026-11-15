@@ -298,7 +298,7 @@ export default function Board() {
     api.get<Zones>('/map/zones').then(setZones).catch(() => setZones(null))
   }, [built])
   useEffect(() => {
-    document.title = 'Supervisor board · bitdispatcher'
+    document.title = 'Supervisor board · Lakes Area Security'
     // Without a lens in its address the board shows what this tab chose, not the last screen's.
     if (!new URLSearchParams(location.hash.split('?')[1] ?? '').has('d')) store.set({ lens: parseLens(sessionStorage.getItem('bd.lens')) })
   }, [])
@@ -357,7 +357,7 @@ export default function Board() {
         <Logo size={24} />
         <div className="leading-tight">
           <div className="text-lg font-black tracking-tight text-slate-50">Supervisor board</div>
-          <div className="text-[11px] text-slate-400">{raw.settings.agency || 'bitdispatcher'} · {lensName(lens)}</div>
+          <div className="text-[11px] text-slate-400">{raw.settings.agency || 'Lakes Area Security'} · {lensName(lens)}</div>
         </div>
         <LensChips lens={lens} onChange={(l) => store.setLens(l)} size="xs" />
         <div className="ml-auto flex items-center gap-4">
@@ -379,7 +379,7 @@ export default function Board() {
       )}
       <TDoSBanner view={raw} />
       <div className="grid shrink-0 grid-cols-7 gap-2 p-2">
-        <Kpi icon={<Phone size={13} aria-hidden />} label="911 calls" value={calls.length} tone={ringing ? 'rose' : calls.length ? 'sky' : 'slate'} alarm={ringing > 0}
+        <Kpi icon={<Phone size={13} aria-hidden />} label="Company calls" value={calls.length} tone={ringing ? 'rose' : calls.length ? 'sky' : 'slate'} alarm={ringing > 0}
           sub={ringing ? <span className="font-bold text-rose-200">{ringing} ringing</span> : calls.length ? `${calls.length} not yet on an incident` : 'none waiting'} />
         <Kpi icon={<Clock3 size={13} aria-hidden />} label="Waiting for a unit" value={pending.length} tone={byP[0] ? 'rose' : pending.length ? 'amber' : 'slate'} alarm={byP[0] > 0}
           sub={pending.length ? <>oldest <span className="font-mono font-bold text-amber-200">{clock(oldest, now)}</span></> : 'every incident has a unit'}>

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -58,6 +59,10 @@ func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &b) {
 		return
 	}
+	if s.LAS && (b.Duty == auth.DutyFire || b.Duty == auth.DutyEMS) {
+		fail(w, 403, "choose a Lakes Area Security duty")
+		return
+	}
 	console, ws := strings.ToUpper(strings.TrimSpace(b.Console)), ""
 	var wsDuties []string
 	s.Eng.Read(func(st *cad.State) {
@@ -79,6 +84,9 @@ func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if need != nil {
+		if s.LAS {
+			need.Duties = slices.DeleteFunc(slices.Clone(need.Duties), func(d string) bool { return d == auth.DutyFire || d == auth.DutyEMS })
+		}
 		// The workstation's own duties are offered first.
 		if len(need.Duties) > 0 && len(wsDuties) > 0 {
 			need.Duties = append(intersect(wsDuties, need.Duties), minus(need.Duties, wsDuties)...)
@@ -316,6 +324,10 @@ func (s *Server) workstationRoutes() {
 			Duties []string `json:"duties"`
 		}
 		if !readJSON(w, r, &b) {
+			return
+		}
+		if s.LAS && (slices.Contains(b.Duties, auth.DutyFire) || slices.Contains(b.Duties, auth.DutyEMS)) {
+			fail(w, 422, "fire and EMS duties are unavailable for LAS")
 			return
 		}
 		name := strings.ToLower(r.PathValue("name"))

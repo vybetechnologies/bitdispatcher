@@ -240,7 +240,7 @@ export default function Queue({ view, onCreateFromCall, onNew, callsOnly }: { vi
   return (
     <aside className="panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" aria-label="Calls and incidents">
       <div className="panel-head">
-        <Phone size={12} aria-hidden /> 911 calls
+        <Phone size={12} aria-hidden /> Company calls
         <span className="font-mono text-slate-300">{calls.filter((c) => c.state !== 'ended').length}</span>
         <span className="ml-auto normal-case tracking-normal text-slate-500">{view.health.bitvoice.connected ? 'from BitVoice' : view.health.ali.listening ? 'from ALI' : 'no call feed'}</span>
         {can.dispatch(me) && (
@@ -250,10 +250,10 @@ export default function Queue({ view, onCreateFromCall, onNew, callsOnly }: { vi
         )}
       </div>
       <PhonedAlarm open={alarmCard} onClose={() => setAlarmCard(false)} />
-      <ul className={cx('overflow-y-auto divide-y divide-slate-800/70', callsOnly ? 'min-h-0 flex-1' : 'max-h-[42%] shrink-0')} aria-label="911 calls">
+      <ul className={cx('overflow-y-auto divide-y divide-slate-800/70', callsOnly ? 'min-h-0 flex-1' : 'max-h-[42%] shrink-0')} aria-label="Company calls">
         {calls.length === 0 ? (
           <li className="px-3 py-2 text-[11px] text-slate-500">
-            No 911 call waiting.{' '}
+            No company call waiting.{' '}
             {view.health.bitvoice.configured
               ? view.health.bitvoice.connected
                 ? 'Watching BitVoice: ringing calls appear here before they are answered.'

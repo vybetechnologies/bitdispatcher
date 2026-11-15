@@ -116,7 +116,7 @@ function TypeBars({ view, units }: { view: View; units: Unit[] }) {
   )
 }
 
-/** Fire houses: every station, its apparatus and their status, who covers whom, the empty houses and their move-ups. */
+/** Offices and posts: every station, its apparatus and their status, who covers whom, the empty houses and their move-ups. */
 export default function StationBoard({ view }: { view: View }) {
   const now = useNow()
   const me = useStore((s) => s.me)
@@ -134,7 +134,7 @@ export default function StationBoard({ view }: { view: View }) {
   const units = houses.flatMap((h) => h.homed)
   const away = units.filter((u) => u.status !== 'available' || at(u) !== u.station)
   return (
-    <section className="panel flex min-h-0 flex-1 flex-col" aria-label="Fire houses">
+    <section className="panel flex min-h-0 flex-1 flex-col" aria-label="Offices and posts">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-800 px-3 py-2">
         <div className="flex items-center gap-2">
           <House size={18} className="text-rose-300" aria-hidden />

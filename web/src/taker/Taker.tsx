@@ -15,7 +15,6 @@ import { applyLens } from '../lens'
 import { callerAt, dirty, dupKey, emptyDraft, fromCall, fromIncident, hasPlace, loadDraft, location, noteText, place, saveDraft, type Draft } from './draft'
 import { AddFlag, FlagsBox, useFlags } from './Flags'
 import StreetViewDock from '../views/StreetView'
-import { RequestsTab } from '../requests/RequestsTab'
 import { ApiError } from '../api'
 import EntryTab from './EntryTab'
 import { PersonsTab, VehiclesTab } from './People'
@@ -50,7 +49,7 @@ export const TABS = [
   { id: 'comments', label: 'Comments', icon: MessageSquare },
   { id: 'history', label: 'History', icon: HistoryIcon },
   { id: 'resources', label: 'Resources', icon: BookOpen },
-  { id: 'requests', label: 'NCIC Requests', icon: FileSearch },
+  { id: 'requests', label: 'External referrals', icon: FileSearch },
 ] as const
 export type TabId = (typeof TABS)[number]['id']
 
@@ -468,7 +467,7 @@ export default function Taker() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Call entry" role="region">
           <Header view={raw} d={d} inc={inc} call={call} now={now} busy={busy} onSubmit={submit} onClear={clear} onRebid={rebid} onClose={closeOut} alerts={[...flagAlerts, ...alerts.critical]} onAlerts={() => setTab('hazards')} />
           <div role="tablist" aria-label="Call entry tabs" className="flex shrink-0 gap-px overflow-x-auto border-b border-slate-800 bg-slate-900/70 px-1">
-            {TABS.map((t, i) => (
+            {TABS.filter(t => t.id !== 'requests').map((t, i) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} aria-controls={'tab-' + t.id} id={'tabbtn-' + t.id} onClick={() => setTab(t.id)}
                 className={cx('flex shrink-0 items-center gap-1 border-b-2 px-2 py-1.5 text-[11px] font-semibold', tab === t.id ? 'border-sky-400 text-slate-50' : 'border-transparent text-slate-400 hover:text-slate-200')}
                 title={`Alt+${i + 1}`}>
@@ -499,7 +498,7 @@ export default function Taker() {
               {tab === 'hazards' && placeAt && (raw?.placeViews || alerts.premises.some((p) => p.photos?.length)) && (
                 <section className="mt-4"><h3 className="label">Views of the place</h3><PlaceViews lat={placeAt[0]} lon={placeAt[1]} premises={alerts.premises} noGoogle /></section>
               )}
-              {tab === 'requests' && <RequestsTab incident={inc?.number} />}
+              {tab === 'requests' && <p className="p-4 text-sm text-slate-400">Government database requests are unavailable for LAS private-security operations.</p>}
               {tab === 'search' && <SearchTab />}
               {tab === 'comments' && <CommentsTab view={raw} d={d} inc={inc} update={update} />}
               {tab === 'history' && <HistoryTab view={raw} inc={inc} />}

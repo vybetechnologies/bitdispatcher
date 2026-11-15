@@ -180,7 +180,7 @@ func (t *trainer) build(key string) (*board, error) {
 		os.RemoveAll(dir)
 		return nil, err
 	}
-	srv, err := New(&Server{Eng: eng, Auth: live.Auth, BV: bitvoice.New(eng, live.Log), Log: live.Log.With("env", "training"),
+	srv, err := New(&Server{LAS: live.LAS, Eng: eng, Auth: live.Auth, BV: bitvoice.New(eng, live.Log), Log: live.Log.With("env", "training"),
 		DataDir: dir, Version: live.Version, Tiles: live.Tiles, Maps: live.Maps, GIS: live.GIS, Views: live.Views, isTraining: true, quit: make(chan struct{})})
 	if err != nil {
 		eng.Close()

@@ -84,7 +84,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		log.Error("data directory", "err", err)
 		return 1
 	}
-	eng, err := cad.Open(filepath.Join(*dataDir, "ledger.jsonl"))
+	eng, err := cad.OpenWithDefaults(filepath.Join(*dataDir, "ledger.jsonl"), cad.LASSettings(), cad.LASCallTypes())
 	if err != nil {
 		log.Error("ledger", "err", err)
 		return 1
@@ -137,7 +137,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	var tilesTpl string
 	eng.Read(func(s *cad.State) { tilesTpl = s.Settings.MapTiles })
-	srv, err := api.New(&api.Server{Eng: eng, Auth: users, BV: bitvoice.New(eng, log), Log: log, DataDir: *dataDir, Version: version, Web: webH, Manual: web.Manual(),
+	srv, err := api.New(&api.Server{LAS: true, Eng: eng, Auth: users, BV: bitvoice.New(eng, log), Log: log, DataDir: *dataDir, Version: version, Web: webH, Manual: web.Manual(),
 		Tiles:  api.NewTileCache(filepath.Join(*dataDir, "tiles"), tilesTpl, version),
 		Maps:   mapdata.NewService(filepath.Join(*dataDir, "map"), agent, log),
 		Photos: photos, Advisory: advisory.New(eng, log), GIS: gisSvc, TLSFingerprint: fp, SelfSigned: *certFile == "", Logs: logs})
@@ -235,7 +235,7 @@ func initAdmin(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	eng, err := cad.Open(filepath.Join(*dataDir, "ledger.jsonl"))
+	eng, err := cad.OpenWithDefaults(filepath.Join(*dataDir, "ledger.jsonl"), cad.LASSettings(), cad.LASCallTypes())
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1

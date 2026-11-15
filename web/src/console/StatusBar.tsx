@@ -2,14 +2,13 @@ import { useState } from 'react'
 import { DirectoryDialog, ScheduleDialog } from './Roadmap'
 import { BreakButton } from './Dream'
 import { Link } from 'react-router-dom'
-import { Activity, CircleHelp, Cog, LogOut, Moon, Radio, Server, Siren, Sun, Phone, FileText, Database, MapIcon, MonitorCheck, LayoutDashboard, BookUser, CalendarClock, Gavel, ClipboardCheck, FileSearch } from 'lucide-react'
+import { Activity, CircleHelp, Cog, LogOut, Moon, Radio, Server, Siren, Sun, Phone, FileText, Database, MapIcon, MonitorCheck, LayoutDashboard, BookUser, CalendarClock, Gavel, ClipboardCheck } from 'lucide-react'
 import { DISCIPLINES, lensName } from '../lens'
 import { screenDef, type ScreenKind } from '../screens'
 import { can, signOut, store, useStore } from '../store'
 import { Logo, Tip } from '../ui'
 import { ago, cx, discipline, ms, useNow } from '../util'
 import type { View } from '../types'
-import { PublicAlertsButton } from './PublicAlerts'
 import { InboxButton } from './Inbox'
 import { SearchButton } from './Search'
 import { UnitRecallHost } from './UnitRecall'
@@ -85,7 +84,7 @@ export default function StatusBar({ view, screen = 'full', onScreens, layout }: 
     <header className="flex h-10 shrink-0 items-center gap-3 border-b border-slate-800 bg-slate-950 px-2.5" aria-label="Status">
       <div className="flex items-center gap-1.5">
         <Logo size={20} />
-        <span className="text-sm font-bold tracking-tight text-slate-50">bitdispatcher</span>
+        <span className="text-sm font-bold tracking-tight text-slate-50">LAS Operations</span>
       </div>
       <div className="hidden min-w-[13rem] shrink-0 flex-col leading-tight lg:flex">
         <span className="truncate text-[11px] font-semibold text-slate-300">{view.settings.agency || 'Agency not named (Admin › Settings)'}</span>
@@ -110,7 +109,7 @@ export default function StatusBar({ view, screen = 'full', onScreens, layout }: 
       <div className="mx-1 h-6 w-px bg-slate-800" aria-hidden />
       {/* Workload at a glance: every number is something the dispatcher acts on. */}
       <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px] font-semibold tnum">
-        <Tip text="911 calls in progress not yet on an incident (ringing first)" side="bottom">
+        <Tip text="Company calls in progress not yet on an incident (ringing first)" side="bottom">
           <span className={cx('inline-flex items-center gap-1 rounded px-1.5 py-0.5', ringing ? 'flash text-white' : live911 ? 'bg-sky-500/15 text-sky-300' : 'text-slate-500')}>
             <Phone size={12} aria-hidden /> {live911} call{live911 === 1 ? '' : 's'}
             {ringing > 0 && <span>· {ringing} ringing</span>}
@@ -174,7 +173,7 @@ export default function StatusBar({ view, screen = 'full', onScreens, layout }: 
             ok={!!bv.lastRadio && now - ms(bv.lastRadio) < 15 * 60000}
             warn
             icon={<Radio size={12} aria-hidden />}
-            label="Radio"
+            label="Radio (unavailable)"
             detail={bv.lastRadio ? `Last radio event ${ago(bv.lastRadio, now)} ago` : 'No radio event received yet'}
           />
         )}
@@ -195,7 +194,7 @@ export default function StatusBar({ view, screen = 'full', onScreens, layout }: 
         </Tip>
         <BreakButton view={view} />
         <RoadmapButtons view={view} />
-        <PublicAlertsButton view={view} />
+
         <InboxButton view={view} />
         <SearchButton view={view} />
         <UnitRecallHost view={view} />
@@ -211,7 +210,6 @@ export default function StatusBar({ view, screen = 'full', onScreens, layout }: 
         {can.supervise(me) && (
           <Link to="/supervisor" className="btn btn-ghost px-1.5" aria-label="Supervisor review: location exceptions, critical incidents, Shift Intelligence" title="Supervisor review: location exceptions, critical incidents, Shift Intelligence"><ClipboardCheck size={14} aria-hidden /></Link>
         )}
-        <Link to="/requests" className="btn btn-ghost px-1.5" aria-label="NCIC and state requests" title="NCIC and state requests"><FileSearch size={14} aria-hidden /></Link>
         <button className="btn btn-ghost px-1.5" onClick={nextTheme} aria-label={`Theme: ${theme}. Change theme`} title={`Theme: ${theme}`}>
           {theme === 'light' ? <Sun size={14} aria-hidden /> : <Moon size={14} aria-hidden />}
         </button>

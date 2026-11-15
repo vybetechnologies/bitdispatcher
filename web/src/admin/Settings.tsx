@@ -1,3 +1,4 @@
+import { SECURITY_DISCIPLINES } from '../brand'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Save, X } from 'lucide-react'
@@ -111,7 +112,7 @@ export default function SettingsPage({ view }: { view: View }) {
                       <td className="pr-2"><input type="number" min={0} max={600} className="input h-7 w-24 py-0 font-mono" value={m.minutes} onChange={(e) => set({ minutes: Number(e.target.value) })} aria-label="Mark-out minutes" /></td>
                       <td className="pr-2">
                         <select className="input h-7 w-32 py-0" value={m.discipline ?? ''} onChange={(e) => set({ discipline: e.target.value || undefined })} aria-label="Discipline">
-                          <option value="">Any unit</option><option value="fire">Fire</option><option value="ems">EMS</option><option value="police">Police</option><option value="other">Other</option>
+                          <option value="">Any unit</option>{SECURITY_DISCIPLINES.map(x => <option key={x.value} value={x.value}>{x.label}</option>)}
                         </select>
                       </td>
                       <td className="pr-2"><input type="checkbox" checked={!!m.interruptible} onChange={(e) => set({ interruptible: e.target.checked })} aria-label="Can be pulled for a call" /></td>
@@ -138,7 +139,7 @@ export default function SettingsPage({ view }: { view: View }) {
           <p className="text-xs text-slate-400">What each duty may do is enforced by the server. A one-time code (any authenticator app) protects access to criminal justice information: confirm your state's CJIS requirements before relying on it.</p>
           <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={!!s.duties?.callTakersDispatch} onChange={(e) => up({ duties: { ...s.duties, callTakersDispatch: e.target.checked } })} /> Call-takers may also send and change units</label>
           <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={!!s.duties?.selfAttach} onChange={(e) => up({ duties: { ...s.duties, selfAttach: e.target.checked } })} /> Crews may attach their own unit to a waiting incident from the mobile terminal</label>
-          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={!!s.duties?.crossDiscipline} onChange={(e) => up({ duties: { ...s.duties, crossDiscipline: e.target.checked } })} /> Police, fire and EMS dispatchers may send any discipline's units</label>
+          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={!!s.duties?.crossDiscipline} onChange={(e) => up({ duties: { ...s.duties, crossDiscipline: e.target.checked } })} /> Security dispatchers may coordinate support units</label>
           <div className="grid grid-cols-2 gap-2">
             <Field label="One-time codes at sign-in" htmlFor="mfa">
               <select id="mfa" className="input" value={s.security?.mfa || 'off'} onChange={(e) => up({ security: { ...s.security, mfa: e.target.value as 'off' } })}>
@@ -180,7 +181,7 @@ export default function SettingsPage({ view }: { view: View }) {
           <h2 className="font-semibold text-slate-100">Calls: location links</h2>
           <p className="text-xs text-slate-400">A call-taker sends a caller a link; the caller opens it and presses Share, and the phone's own location comes to the call until the link ends. The link uses the public address set in Paging groups.</p>
           <Field label="A link lasts (minutes)" htmlFor="llm"><input id="llm" type="number" min={1} max={1440} className="input w-32 font-mono" value={s.next?.locLinkMinutes || 30} onChange={(e) => up({ next: { ...s.next, locLinkMinutes: Number(e.target.value) } })} /></Field>
-          <Field label="The text sent with it" htmlFor="llt" hint="{link} is replaced by the link; empty uses the default"><input id="llt" className="input" value={s.next?.locLinkText ?? ''} onChange={(e) => up({ next: { ...s.next, locLinkText: e.target.value } })} placeholder="911: to show us exactly where you are, open this link and press Share: {link}" /></Field>
+          <Field label="The text sent with it" htmlFor="llt" hint="{link} is replaced by the link; empty uses the default"><input id="llt" className="input" value={s.next?.locLinkText ?? ''} onChange={(e) => up({ next: { ...s.next, locLinkText: e.target.value } })} placeholder="Lakes Area Security: to share your location, open this link and press Share: {link}" /></Field>
         </section>
         <section className="panel space-y-3 rounded-lg p-4">
           <h2 className="font-semibold text-slate-100">People: critical calls and breaks</h2>
@@ -213,19 +214,7 @@ export default function SettingsPage({ view }: { view: View }) {
             <Field label="Warn at calls a minute" htmlFor="tdp" hint="0: five times the usual (at least 12)"><input id="tdp" type="number" min={0} className="input font-mono" value={s.tdosPerMinute ?? 0} onChange={(e) => up({ tdosPerMinute: Number(e.target.value) })} /></Field>
           </div>
         </section>
-        <section className="panel space-y-3 rounded-lg p-4">
-          <h2 className="font-semibold text-slate-100">NCIC and the state message switch</h2>
-          <p className="text-xs text-slate-400">Inquiries go through the state's switch under its agreement; bitdispatcher logs each with its purpose and reason. The training simulator answers TEST plates, names and serials and marks every answer SIMULATED.</p>
-          <div className="grid grid-cols-3 gap-2">
-            <Field label="ORI" htmlFor="ori" hint="The agency's originating agency identifier"><input id="ori" className="input font-mono uppercase" value={s.ori ?? ''} onChange={(e) => up({ ori: e.target.value.toUpperCase().trim() })} placeholder="VA0770000" /></Field>
-            <Field label="Switch" htmlFor="ncm">
-              <select id="ncm" className="input" value={s.ncicMode ?? 'off'} onChange={(e) => up({ ncicMode: e.target.value })}>
-                <option value="off">Off</option><option value="sim">Training simulator</option><option value="line">Switch adapter (TCP)</option>
-              </select>
-            </Field>
-            <Field label="Adapter address" htmlFor="nca" hint="host:port"><input id="nca" className="input font-mono" disabled={s.ncicMode !== 'line'} value={s.ncicAddr ?? ''} onChange={(e) => up({ ncicAddr: e.target.value.trim() })} placeholder="10.0.0.5:7001" /></Field>
-          </div>
-        </section>
+
         <section className="panel space-y-3 rounded-lg p-4">
           <h2 className="font-semibold text-slate-100">Map beyond the recorded area</h2>
           <p className="text-xs text-slate-400">The dispatch map is drawn from the map recorded in Admin › Map. Outside that area the console falls back to these online tiles, shown muted with the edge of the recorded map marked. bitdispatcher fetches them itself and keeps each one on disk; browsers never contact a tile server.</p>
@@ -245,15 +234,14 @@ export default function SettingsPage({ view }: { view: View }) {
           </div>
         </section>
         <section className="panel space-y-3 rounded-lg p-4 lg:col-span-2">
-          <h2 className="font-semibold text-slate-100">Crews, the fire ground and tows</h2>
+          <h2 className="font-semibold text-slate-100">Security staffing and towing</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Qualifications" htmlFor="quals" hint="Separated by commas: offered on the roster (Personnel & crews)"><input id="quals" className="input font-mono" key={'q' + (s.qualifications ?? []).join()} defaultValue={(s.qualifications ?? []).join(', ')} onBlur={(e) => up({ qualifications: e.target.value.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean) })} /></Field>
-            <Field label="Roll call (PAR) every, minutes" htmlFor="parm" hint="At a fire whose call type asks for accountability; 0: 20"><input id="parm" type="number" min={0} max={60} className="input w-24 font-mono" value={s.parMinutes ?? 0} onChange={(e) => up({ parMinutes: Number(e.target.value) })} /></Field>
             <div className="md:col-span-2">
               <span className="label">What a capability needs of a crew</span>
-              <p className="mb-1 text-xs text-slate-500">Only for units whose crew is recorded: a unit without the qualification aboard loses the capability (a medic with no paramedic is not sent as ALS). {s.capNeeds == null && 'Now: the default, ALS needs a paramedic.'}</p>
+              <p className="mb-1 text-xs text-slate-500">Only for units whose crew is recorded: a unit without the qualification aboard loses the capability (a security unit must meet the configured staffing requirements). </p>
               <ul className="space-y-1">
-                {(s.capNeeds ?? [{ capability: 'als', qualification: 'paramedic', count: 1 }]).map((n, i, all) => (
+                {(s.capNeeds ?? []).map((n, i, all) => (
                   <li key={i} className="flex items-center gap-2 text-sm">
                     <input aria-label={`Need ${i + 1} capability`} className="input w-32 font-mono" value={n.capability} onChange={(e) => up({ capNeeds: all.map((x, j) => (j === i ? { ...x, capability: e.target.value.trim().toLowerCase() } : x)) })} />
                     <span className="text-slate-500">needs</span>
@@ -264,9 +252,8 @@ export default function SettingsPage({ view }: { view: View }) {
                   </li>
                 ))}
               </ul>
-              <button className="btn mt-1" onClick={() => up({ capNeeds: [...(s.capNeeds ?? [{ capability: 'als', qualification: 'paramedic', count: 1 }]), { capability: '', qualification: '', count: 1 }] })}><Plus size={13} aria-hidden /> Add a need</button>
+              <button className="btn mt-1" onClick={() => up({ capNeeds: [...(s.capNeeds ?? []), { capability: '', qualification: '', count: 1 }] })}><Plus size={13} aria-hidden /> Add a need</button>
             </div>
-            <Field label="Fire-ground benchmarks" htmlFor="bms" hint="One a line: a code, a space, the name (BM PS on the command line). Empty: the usual ones"><textarea id="bms" rows={4} className="input font-mono" key={'b' + JSON.stringify(s.benchmarks ?? [])} defaultValue={(s.benchmarks ?? []).map((b) => `${b.code} ${b.name}`).join('\n')} onBlur={(e) => up({ benchmarks: e.target.value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const [c, ...rest] = l.split(/\s+/); return { code: c.toUpperCase(), name: rest.join(' ') || c } }) })} /></Field>
             <div className="space-y-3">
               <Field label="Tow classes" htmlFor="towc" hint="Separated by commas; empty: light, medium, heavy"><input id="towc" className="input font-mono" key={'tc' + (s.towClasses ?? []).join()} defaultValue={(s.towClasses ?? []).join(', ')} onBlur={(e) => up({ towClasses: e.target.value.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean) })} /></Field>
               <Field label="Tow zones" htmlFor="towz" hint="Separated by commas: each zone has its own rotation; empty: one for the whole area"><input id="towz" className="input" key={'tz' + (s.towZones ?? []).join()} defaultValue={(s.towZones ?? []).join(', ')} onBlur={(e) => up({ towZones: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} /></Field>
@@ -285,7 +272,7 @@ export default function SettingsPage({ view }: { view: View }) {
                   <td className="pr-2"><input aria-label="Name" className="input" value={t.name} onChange={(e) => upType(i, { name: e.target.value })} /></td>
                   <td className="pr-2">
                     <select aria-label="Discipline" className="input" value={t.discipline} onChange={(e) => upType(i, { discipline: e.target.value })}>
-                      {['fire', 'ems', 'police', 'other'].map((x) => <option key={x}>{x}</option>)}
+                      {['police', 'other'].map((x) => <option key={x}>{x}</option>)}
                     </select>
                   </td>
                   <td className="pr-2"><input aria-label="Capabilities" className="input font-mono" value={t.capabilities.join(', ')} onChange={(e) => upType(i, { capabilities: e.target.value.split(/[,\s]+/).filter(Boolean) })} /></td>

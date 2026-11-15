@@ -1,3 +1,4 @@
+import { SECURITY_DUTIES } from '../brand'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Trash2, UserCog } from 'lucide-react'
@@ -12,10 +13,7 @@ type U = { username: string; name: string; role: string; disabled?: boolean; dem
 type Draft = { username: string; name: string; role: string; password: string; disabled: boolean; demo: boolean; isNew: boolean; duties: string[]; mfa: boolean }
 
 // The duties a person can hold, in the order the sign-in page offers them; their role follows from them.
-const DUTIES: [string, string][] = [
-  ['calltaker', 'Call-taker'], ['police', 'Police dispatcher'], ['fire', 'Fire dispatcher'], ['ems', 'EMS dispatcher'], ['dispatcher', 'Dispatcher (all disciplines)'],
-  ['supervisor', 'Supervisor'], ['admin', 'Administrator'], ['records', 'Records'], ['field', 'Field crew (mobile terminal)'], ['viewer', 'Viewer'],
-]
+const DUTIES = SECURITY_DUTIES
 
 const ROLES = [
   ['dispatcher', 'Dispatcher: works incidents and units'],

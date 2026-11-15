@@ -152,7 +152,7 @@ export default function ScreensDialog({ open, onClose }: { open: boolean; onClos
         <section className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
           <div className="text-sm font-semibold text-slate-100">This window shows</div>
           <LensChips lens={lens} onChange={(x) => store.setLens(x)} />
-          <span className="text-xs text-slate-500">{lensName(lens)}. Emergencies and 911 calls not yet on an incident are always shown.</span>
+          <span className="text-xs text-slate-500">{lensName(lens)}. Emergencies and company calls not yet on an incident are always shown.</span>
         </section>
 
         <section>

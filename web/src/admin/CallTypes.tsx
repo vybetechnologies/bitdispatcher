@@ -1,3 +1,4 @@
+import { SECURITY_DISCIPLINES, disciplineLabel } from '../brand'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ClipboardList, Plus, Trash2, X } from 'lucide-react'
@@ -10,7 +11,7 @@ import { Page, Table } from './Admin'
 type Draft = { code: string; name: string; priority: number; discipline: string; runCard: Requirement[]; critical?: boolean; drone?: boolean; autoDispatch?: boolean; notify?: string[]; group?: string; alarms?: AlarmLevel[]; par?: boolean; parMinutes?: number; nemsis?: string; agencies?: string[]; checkMinutes?: number; isNew: boolean }
 
 // importCSV reads call types from a spreadsheet: code, name, priority, discipline, group, run card
-// ("2 engine; 1 ladder"), notify ("Fire marshal; Animal control"). A header row is skipped.
+// ("1 security; 1 supervisor"), notify ("Site manager; Client contact"). A header row is skipped.
 export function parseCallTypes(text: string) {
   const rows = text.split(/\r?\n/).map((l) => l.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map((x) => x.trim().replace(/^"|"$/g, ''))).filter((r) => r[0])
   if (rows[0] && /^code$/i.test(rows[0][0])) rows.shift()
@@ -29,7 +30,7 @@ export default function CallTypes({ view }: { view: View }) {
   const open = (code?: string) => {
     const c = view.callTypes.find((x) => x.code === code)
     setErr(null)
-    setD(c ? { ...c, runCard: c.runCard ?? [], isNew: false } : { code: '', name: '', priority: 3, discipline: 'fire', runCard: [], isNew: true })
+    setD(c ? { ...c, runCard: c.runCard ?? [], isNew: false } : { code: '', name: '', priority: 3, discipline: 'police', runCard: [], isNew: true })
   }
   const save = async () => {
     if (!d) return
@@ -69,7 +70,7 @@ export default function CallTypes({ view }: { view: View }) {
             <td className="px-3 py-1.5 font-mono font-bold text-slate-100">{c.code}</td>
             <td className="px-3 text-slate-200">{c.name}{c.critical && <span className="chip ml-1 bg-teal-500/20 text-teal-200">critical</span>}{c.drone && <span className="chip ml-1 bg-cyan-500/20 text-cyan-200">drone</span>}{c.autoDispatch && <span className="chip ml-1 bg-amber-500/20 text-amber-200">auto-dispatch</span>}{(c.alarms?.length ?? 0) > 0 && <span className="chip ml-1 bg-orange-500/20 text-orange-200">{c.alarms!.length + 1} alarms</span>}{c.par && <span className="chip ml-1 bg-rose-500/20 text-rose-200">PAR</span>}</td>
             <td className="px-3"><Priority p={c.priority} /></td>
-            <td className="px-3 text-slate-400">{c.discipline}</td>
+            <td className="px-3 text-slate-400">{disciplineLabel(c.discipline)}</td>
             <td className="px-3 font-mono text-xs text-slate-300">{(c.runCard ?? []).map((r) => `${r.count}×${r.capability}`).join('  ') || <span className="text-slate-500">none: chosen by hand</span>}</td>
           </tr>
         ))}
@@ -104,10 +105,10 @@ export default function CallTypes({ view }: { view: View }) {
             </Field>
             <Field label="Discipline" htmlFor="cd">
               <select id="cd" className="input" value={d.discipline} onChange={(e) => setD({ ...d, discipline: e.target.value })}>
-                {['fire', 'ems', 'police', 'other'].map((x) => <option key={x}>{x}</option>)}
+                {SECURITY_DISCIPLINES.map(x => <option key={x.value} value={x.value}>{x.label}</option>)}
               </select>
             </Field>
-            <Field label="Group" htmlFor="cg"><input id="cg" className="input" value={d.group ?? ''} placeholder="Medical, Traffic…" onChange={(e) => setD({ ...d, group: e.target.value || undefined })} /></Field>
+            <Field label="Group" htmlFor="cg"><input id="cg" className="input" value={d.group ?? ''} placeholder="Patrol, Access, Client assistance…" onChange={(e) => setD({ ...d, group: e.target.value || undefined })} /></Field>
             <div className="sm:col-span-3"><Field label="Notify" htmlFor="cno" hint="People or agencies to tell for this type, separated by semicolons: a checklist on every incident of it"><input id="cno" className="input" value={(d.notify ?? []).join('; ')} onChange={(e) => setD({ ...d, notify: e.target.value.split(';').map((x) => x.trim()).filter(Boolean) })} /></Field></div>
             <label className="flex items-start gap-2 text-sm text-slate-300 sm:col-span-2">
               <input type="checkbox" className="mt-1" checked={!!d.critical} onChange={(e) => setD({ ...d, critical: e.target.checked })} />
@@ -138,7 +139,7 @@ export default function CallTypes({ view }: { view: View }) {
               <button className="btn mt-2" onClick={() => setD({ ...d, runCard: [...d.runCard, { capability: '', count: 1 }] })}><Plus size={13} aria-hidden /> Add line</button>
             </div>
             <div className="sm:col-span-4">
-              <span className="label">Further alarms</span>
+              <span className="label">Response escalation</span>
               <p className="mb-1 text-xs text-slate-500">Each further alarm adds units to the run card. ALARM on the command line (or the incident's Upgrade button) moves an incident up one, and the recommendation fills the bigger card.</p>
               {(d.alarms ?? []).map((al, ai) => (
                 <div key={ai} className="mb-2 rounded border border-slate-800 p-2">
@@ -160,15 +161,9 @@ export default function CallTypes({ view }: { view: View }) {
                   <button className="btn mt-1 h-7" onClick={() => setD({ ...d, alarms: (d.alarms ?? []).map((x, j) => (j === ai ? { ...x, runCard: [...x.runCard, { capability: '', count: 1 }] } : x)) })}><Plus size={12} aria-hidden /> Add line</button>
                 </div>
               ))}
-              <button className="btn" onClick={() => setD({ ...d, alarms: [...(d.alarms ?? []), { name: ordinal((d.alarms?.length ?? 0) + 2) + ' alarm', runCard: [{ capability: 'engine', count: 2 }] }] })}><Plus size={13} aria-hidden /> Add the {ordinal((d.alarms?.length ?? 0) + 2)} alarm</button>
+              <button className="btn" onClick={() => setD({ ...d, alarms: [...(d.alarms ?? []), { name: ordinal((d.alarms?.length ?? 0) + 2) + ' alarm', runCard: [{ capability: 'security', count: 1 }] }] })}><Plus size={13} aria-hidden /> Add the {ordinal((d.alarms?.length ?? 0) + 2)} alarm</button>
             </div>
-            <label className="flex items-start gap-2 text-sm text-slate-300 sm:col-span-2">
-              <input type="checkbox" className="mt-1" checked={!!d.par} onChange={(e) => setD({ ...d, par: e.target.checked })} />
-              <span>Fire-ground accountability<span className="block text-xs text-slate-500">The roll-call (PAR) clock starts when the first unit arrives</span></span>
-            </label>
-            <Field label="Roll call every (minutes)" htmlFor="cpm" hint="0: the setting (20 unless changed)"><input id="cpm" type="number" min={0} max={60} className="input w-24 font-mono" value={d.parMinutes ?? 0} onChange={(e) => setD({ ...d, parMinutes: Number(e.target.value) })} /></Field>
-            <Field label="NEMSIS dispatch reason" htmlFor="cnem" hint="For EMS patient-care reports (eDispatch.01); empty: suggested from the name"><input id="cnem" className="input font-mono" placeholder="2301…" value={d.nemsis ?? ''} onChange={(e) => setD({ ...d, nemsis: e.target.value.trim() })} /></Field>
-            <Field label="Safety timer (minutes)" htmlFor="cck" hint="Status check for units on scene of this type, e.g. a traffic stop"><input id="cck" type="number" min={0} max={600} className="input w-24 font-mono" value={d.checkMinutes ?? 0} onChange={(e) => setD({ ...d, checkMinutes: Number(e.target.value) })} /></Field>
+            <Field label="Safety timer (minutes)" htmlFor="cck" hint="Status check for units on scene of this type, e.g. a security response"><input id="cck" type="number" min={0} max={600} className="input w-24 font-mono" value={d.checkMinutes ?? 0} onChange={(e) => setD({ ...d, checkMinutes: Number(e.target.value) })} /></Field>
             {agencies.length > 0 && (
               <div className="sm:col-span-4">
                 <span className="label">Agencies</span>

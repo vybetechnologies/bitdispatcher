@@ -85,7 +85,7 @@ export default function Console({ screen = 'full' }: { screen?: ScreenKind }) {
   // A screen window answers "which screens are open?" and remembers where it is, so it opens there again.
   useEffect(() => {
     const slot = slotOf()
-    document.title = screen === 'full' ? 'bitdispatcher' : `${def.title} · bitdispatcher`
+    document.title = screen === 'full' ? 'LAS Operations' : `${def.title} · Lakes Area Security`
     if (!slot) return
     const on = (ev: MessageEvent<{ ping?: boolean }>) => ev.data.ping && screensChannel?.postMessage({ pong: slot })
     screensChannel?.addEventListener('message', on)

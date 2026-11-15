@@ -7,19 +7,17 @@ const discipline = (view: View, u: Unit) => view.settings.unitTypes.find((t) => 
 // still shows every emergency, and every 911 call not yet on an incident (a caller may need anyone).
 
 export const DISCIPLINES = [
-  { d: 'fire', label: 'Fire', short: 'FIRE', color: '#f87171' },
-  { d: 'ems', label: 'EMS', short: 'EMS', color: '#60a5fa' },
-  { d: 'police', label: 'Police', short: 'PD', color: '#a5b4fc' },
-  { d: 'other', label: 'Other', short: 'OTH', color: '#94a3b8' },
+  { d: 'police', label: 'Security', short: 'SEC', color: '#c9a227' },
+  { d: 'other', label: 'Support', short: 'SUP', color: '#94a3b8' },
 ] as const
 
 export type Lens = string[] // disciplines; empty for all
 
 export const lensName = (l: Lens) =>
-  !l.length ? 'All disciplines' : l.map((d) => DISCIPLINES.find((x) => x.d === d)?.label ?? d).join(' + ')
+  !l.length ? 'All security operations' : l.map((d) => DISCIPLINES.find((x) => x.d === d)?.label ?? d).join(' + ')
 
 export function parseLens(s: string | null | undefined): Lens {
-  return (s ?? '').split(',').map((x) => x.trim()).filter((x) => DISCIPLINES.some((d) => d.d === x))
+  return (s ?? '').split(',').map((x) => x.trim()).filter((x) => (['police', 'other', 'fire', 'ems'] as string[]).includes(x))
 }
 
 /** The disciplines an incident needs: its call type's, those of units sent to it, and those its run card asks for. */

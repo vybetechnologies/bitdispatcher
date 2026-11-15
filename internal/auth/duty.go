@@ -211,6 +211,10 @@ func (s *Store) SignIn(r Request) (*Session, *Need, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	// A successful code belongs to the completed sign-in, not an intermediate duty prompt.
+	// Defer both enrollment and replay-protection updates until every sign-in choice is valid.
+	var acceptedStep int64
+	enrolling := false
 	if s.mfaRequired(u) {
 		if u.TOTP == "" {
 			// First sign-in under the policy: set up the app now.
@@ -226,8 +230,7 @@ func (s *Store) SignIn(r Request) (*Session, *Need, error) {
 				s.fail(username)
 				return nil, &Need{Enrol: &Enrol{Secret: plainSecret(u.PendingTOTP), URI: otpURI(s.Issuer, u.Username, u.PendingTOTP)}}, ErrBadCode
 			}
-			u.TOTP, u.PendingTOTP, u.TOTPStep = u.PendingTOTP, "", step
-			s.save()
+			acceptedStep, enrolling = step, true
 		} else {
 			if strings.TrimSpace(r.Code) == "" {
 				return nil, &Need{Code: true}, nil
@@ -240,7 +243,7 @@ func (s *Store) SignIn(r Request) (*Session, *Need, error) {
 				s.fail(username)
 				return nil, &Need{Code: true}, ErrBadCode
 			}
-			u.TOTPStep = step
+			acceptedStep = step
 		}
 	}
 	duties := u.duties()
@@ -253,6 +256,12 @@ func (s *Store) SignIn(r Request) (*Session, *Need, error) {
 	}
 	if !slices.Contains(duties, duty) {
 		return nil, &Need{Duties: duties, Last: u.LastDuty}, fmt.Errorf("%s is not one of your duties: choose one of yours", DutyName(duty))
+	}
+	if acceptedStep > 0 {
+		if enrolling {
+			u.TOTP, u.PendingTOTP = u.PendingTOTP, ""
+		}
+		u.TOTPStep = acceptedStep
 	}
 	delete(s.fails, username)
 	u.LastDuty = duty

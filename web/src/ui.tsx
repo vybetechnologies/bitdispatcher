@@ -6,16 +6,7 @@ import { cx, prio, statusMeta } from './util'
 
 export function Logo({ size = 22 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#f43f5e" />
-          <stop offset="1" stopColor="#f97316" />
-        </linearGradient>
-      </defs>
-      <path d="M16 3l11 4.5v8.2C27 23 22 27.4 16 29 10 27.4 5 23 5 15.7V7.5z" fill="url(#lg)" />
-      <path d="M11 16h10M16 11v10" stroke="#0b0f17" strokeWidth="3" strokeLinecap="round" />
-    </svg>
+    <img src="./las-logo.webp" width={size} height={size} className="shrink-0 object-contain" alt="Lakes Area Security" />
   )
 }
 

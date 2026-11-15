@@ -7,8 +7,6 @@ import { can, store, useStore } from '../store'
 import type { Session } from '../types'
 import { Logo } from '../ui'
 import { cx } from '../util'
-import NcicPanel from './NcicPanel'
-import StateFile from './StateFile'
 
 export type Offense = {
   code: string; attempted?: boolean; weapons?: string[]; bias?: string; using?: string[]; activity?: string[]; entry?: string; premises?: number
@@ -44,7 +42,6 @@ export default function Rms() {
   const [list, setList] = useState<Report[]>([])
   const [meta, setMeta] = useState<Meta | null>(null)
   const [filter, setFilter] = useState('')
-  const [ncic, setNcic] = useState(false)
   const nav = useNavigate()
   const load = () => api.get<Report[]>('/rms/reports').then(setList).catch((e) => toast.error(errText(e)))
   useEffect(() => {
@@ -57,7 +54,6 @@ export default function Rms() {
       <nav className="flex w-80 shrink-0 flex-col border-r border-slate-800 bg-slate-900" aria-label="Reports">
         <div className="flex items-center gap-2 border-b border-slate-800 p-2">
           <Link to="/" className="flex items-center gap-2 rounded px-2 py-1 text-sm font-semibold text-slate-200 hover:bg-slate-800"><ArrowLeft size={14} aria-hidden /> <Logo size={18} /> Dispatch</Link>
-          <button className="btn ml-auto h-7 text-xs" onClick={() => setNcic(true)} disabled={!meta || meta.ncic.mode === 'off'} title={meta?.ncic.mode === 'off' ? 'NCIC is off in Settings' : 'NCIC inquiry (F9)'}>NCIC</button>
           <button className="btn btn-go h-7 text-xs" onClick={async () => {
             try {
               const r = await api.post<{ report: Report }>('/rms/reports', { offenses: [], people: [], property: [], vehicles: [] })
@@ -88,14 +84,13 @@ export default function Rms() {
             </li>
           ))}
         </ul>
-        {can.supervise(me) && <StateFile />}
+        <a className="btn m-2 text-xs" href="https://mgt.lakesareasecurity.com/records-requests" target="_blank" rel="noopener noreferrer">Management records requests</a>
       </nav>
       <main className="min-w-0 flex-1 overflow-y-auto p-4">
         {number && meta ? <Editor key={number} number={number} meta={meta} me={me} onSaved={load} /> : (
           <div className="grid h-full place-items-center text-sm text-slate-500">Choose a report, or write a new one.</div>
         )}
       </main>
-      {meta && <NcicPanel open={ncic} onOpenChange={setNcic} meta={meta} reason={number ?? ""} />}
     </div>
   )
 }

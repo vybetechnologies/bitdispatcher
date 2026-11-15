@@ -1,15 +1,17 @@
+import LasAgency from './LasAgency'
+import LasIntegrations from './LasIntegrations'
+import { UNAVAILABLE_ADMIN } from '../brand'
 import { NavLink, Navigate, Route, Routes, Link, useLocation, useNavigate } from 'react-router-dom'
 import { HelpLink } from '../Help'
 import { lazy, Suspense, useState } from 'react'
 import { ArrowLeft, Award, BarChart3, BookOpen, FileLock2, Hospital, Layers3, Lightbulb, MonitorSmartphone, Network, Route as RouteIcon, ShieldAlert, FileInput, Building2, Cable, ClipboardList, Database, Map as MapIcon, Settings as Cog, Truck, Users as UsersIcon, ListChecks, HardHat, BellRing, BookUser, Hexagon, Megaphone, Landmark, SlidersHorizontal, BadgeCheck, Ban, Cctv, Siren, Bot, ListTodo, Rocket, LifeBuoy, Flag, ShieldQuestion, PhoneIncoming, Waypoints, ArrowRightLeft, Drone, Wrench, PhoneCall, MapPinned, ScrollText, ChevronRight, Search } from 'lucide-react'
-import { can, useStore } from '../store'
+import { can, signOut, useStore } from '../store'
 import { Logo } from '../ui'
 import { cx } from '../util'
 import Units from './Units'
 import Stations from './Stations'
 import CallTypes from './CallTypes'
 import SettingsPage from './Settings'
-import Integrations from './Integrations'
 import Users from './Users'
 import Ledger from './Ledger'
 import MapAdmin from './MapAdmin'
@@ -68,6 +70,7 @@ const TONE: Record<Tone, { tile: string; text: string }> = {
 
 const GROUPS: Group[] = [
   { id: 'start', label: 'Getting started', icon: Rocket, tone: 'emerald', pages: [
+    { to: 'las', label: 'Lakes Area Security', icon: Building2, admin: true },
     { to: 'setup', label: 'Setup checklist', icon: ListTodo, admin: true },
     { to: 'golive', label: 'Go-live check', icon: Rocket, admin: true },
     { to: 'support', label: 'Support', icon: LifeBuoy, admin: true },
@@ -127,7 +130,7 @@ const GROUPS: Group[] = [
     { to: 'pip', label: 'PSC PIP connection', icon: Waypoints, admin: true },
   ] },
 ]
-const PAGES = GROUPS.flatMap((g) => g.pages)
+const PAGES = GROUPS.flatMap((g) => g.pages).filter(p => !UNAVAILABLE_ADMIN.has(p.to))
 
 export default function Admin() {
   const me = useStore((s) => s.me)
@@ -144,7 +147,9 @@ export default function Admin() {
           <p className="text-sm text-slate-500">Loading…</p>
         ) : (
           <Routes>
+            {[...UNAVAILABLE_ADMIN].map(path => <Route key={path} path={path} element={<p>This government or multi-agency workspace is unavailable in the LAS private-security configuration.</p>} />)}
             <Route index element={<Navigate to={'/admin/' + pages[0].to} replace />} />
+            <Route path="las" element={<LasAgency />} />
             <Route path="setup" element={<Setup />} />
             <Route path="golive" element={<GoLive />} />
             <Route path="support" element={<Support view={view} />} />
@@ -158,7 +163,7 @@ export default function Admin() {
             <Route path="plans" element={<Plans view={view} />} />
             <Route path="map" element={<MapAdmin view={view} />} />
             <Route path="settings" element={<SettingsPage view={view} />} />
-            <Route path="integrations" element={<Integrations view={view} />} />
+            <Route path="integrations" element={<LasIntegrations />} />
             <Route path="users" element={<Users />} />
             <Route path="workstations" element={<Workstations />} />
             <Route path="ledger" element={views && !views.has('ledger') ? <NotGiven /> : <Ledger />} />
@@ -233,6 +238,7 @@ function AdminNav({ pages, seq }: { pages: NavPage[]; seq?: number }) {
             }} />
         </label>
       </div>
+      <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-amber-300">LAS Operations</div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
         {GROUPS.map((g) => {
           const items = g.pages.filter((p) => allowed.has(p.to) && (!find || p.label.toLowerCase().includes(find)))
@@ -271,6 +277,7 @@ function AdminNav({ pages, seq }: { pages: NavPage[]; seq?: number }) {
         Every change here is an attributed event in the ledger.
         {seq !== undefined && <div className="mt-0.5 font-mono">ledger #{seq}</div>}
       </div>
+      <div className="space-y-2 border-t border-slate-800 p-3 text-xs"><a href="https://mgt.lakesareasecurity.com" target="_blank" rel="noopener noreferrer" className="block text-slate-300">Management portal ↗</a><button className="btn w-full" onClick={() => signOut()}>Sign out</button><p className="text-slate-500">Powered by BitDispatcher · Apache 2.0</p></div>
     </nav>
   )
 }

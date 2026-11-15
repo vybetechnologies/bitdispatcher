@@ -18,7 +18,7 @@ import (
 // A pattern that matches nothing is a compile error, which is the behaviour worth having: if the front end
 // has not been built, the build stops rather than producing a server that 404s its own interface.
 //
-//go:embed dist/index.html dist/favicon.svg dist/sw.js dist/assets
+//go:embed dist/index.html dist/favicon.svg dist/sw.js dist/assets dist/las-logo.webp dist/inter.woff2 dist/Inter-OFL.txt
 var embedded embed.FS
 
 // The printed manual (make manual), served at /manual like Perfuse's, so it opens in its own tab and prints.

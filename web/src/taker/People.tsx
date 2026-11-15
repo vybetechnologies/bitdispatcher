@@ -1,3 +1,4 @@
+import { BRAND } from '../brand'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { AlertTriangle, Car, Copy, Link2, Pencil, Plus, Search, Send, ShieldAlert, Trash2, Truck, Users } from 'lucide-react'
@@ -236,7 +237,7 @@ function PersonCard({ p, inc, codes, onEdit, onRemove }: { p: Person; inc?: Inci
         </div>
       )}
 
-      {inc && <PersonInquiries incident={inc.number} record={p.id} requester="" />}
+      {BRAND.governmentConnections && inc && <PersonInquiries incident={inc.number} record={p.id} requester="" />}
     </li>
   )
 }
@@ -908,7 +909,7 @@ function VehicleCard({ v, inc, persons, codes, onEdit, onRemove, onTow }: {
           <Trash2 size={12} aria-hidden />
         </button>
       </div>
-      {inc && !draft && <VehicleInquiries incident={inc.number} record={v.id} />}
+      {BRAND.governmentConnections && inc && !draft && <VehicleInquiries incident={inc.number} record={v.id} />}
     </li>
   )
 }
@@ -1005,7 +1006,7 @@ function VehicleForm({ value, roles, persons, codes, inc, onCancel, onSave }: {
         </div>
       )}
 
-      <RunButtons v={v} inc={inc} />
+      {BRAND.governmentConnections && <RunButtons v={v} inc={inc} />}
 
       {/* reported vs official */}
       <fieldset>

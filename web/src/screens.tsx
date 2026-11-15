@@ -16,15 +16,15 @@ export const SCREENS: ScreenDef[] = [
     boxes: [{ x: 0, y: 0, w: 3, h: 7, label: 'Queue', tone: 'queue' }, { x: 3, y: 0, w: 6, h: 5, label: 'Map', tone: 'map' }, { x: 9, y: 0, w: 3, h: 7, label: 'Incident', tone: 'panel' }, { x: 3, y: 5, w: 6, h: 2, label: 'Units', tone: 'units' }, { x: 0, y: 7, w: 12, h: 1, label: '', tone: 'cmd' }],
   },
   {
-    kind: 'calls', route: '/screen/calls', title: 'Incidents and call entry', hint: '911 calls and incidents with the incident you are working, new incident (F2) and the command line.',
+    kind: 'calls', route: '/screen/calls', title: 'Incidents and call entry', hint: 'Company calls and incidents with the incident you are working, new incident (F2) and the command line.',
     boxes: [{ x: 0, y: 0, w: 5, h: 7, label: 'Calls and incidents', tone: 'queue' }, { x: 5, y: 0, w: 7, h: 7, label: 'Incident', tone: 'panel' }, { x: 0, y: 7, w: 12, h: 1, label: '', tone: 'cmd' }],
   },
   {
-    kind: 'stations', route: '/screen/stations', title: 'Fire houses', hint: 'Every station with its apparatus and their status, who is covering, empty houses and move-ups.', lens: ['fire', 'ems'],
+    kind: 'stations', route: '/screen/stations', title: 'Offices and posts', hint: 'Every office or post with its security units and their status, who is covering, empty houses and move-ups.', lens: ['police', 'other'],
     boxes: [0, 1, 2, 3, 4, 5].map((i) => ({ x: (i % 3) * 4, y: Math.floor(i / 3) * 3.5, w: 3.8, h: 3.3, label: `ST${i + 1}`, tone: 'cards' as Box['tone'] })).concat([{ x: 0, y: 7, w: 12, h: 1, label: '', tone: 'cmd' }]),
   },
   {
-    kind: 'police', route: '/screen/police', title: 'Police status and mark-outs', hint: 'Every car: what it is doing, where, how long, and when its status check is due. Mark-outs in one click.', lens: ['police'],
+    kind: 'police', route: '/screen/police', title: 'Security unit status and activities', hint: 'Every car: what it is doing, where, how long, and when its status check is due. Mark-outs in one click.', lens: ['police'],
     boxes: [{ x: 0, y: 0, w: 12, h: 1, label: '', tone: 'kpi' }, { x: 0, y: 1, w: 7, h: 6, label: 'Units, mark-outs, checks', tone: 'table' }, { x: 7, y: 1, w: 5, h: 6, label: 'Map', tone: 'map' }, { x: 0, y: 7, w: 12, h: 1, label: '', tone: 'cmd' }],
   },
   {

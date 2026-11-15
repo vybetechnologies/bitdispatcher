@@ -8,8 +8,8 @@ import { cx } from './util'
 import type { Duty, Need } from './types'
 
 export const DUTY_NAMES: Record<Duty, string> = {
-  calltaker: 'Call-taker', police: 'Police dispatcher', fire: 'Fire dispatcher', ems: 'EMS dispatcher', dispatcher: 'Dispatcher (all disciplines)',
-  supervisor: 'Supervisor', admin: 'Administrator', records: 'Records', field: 'Field crew (mobile terminal)', viewer: 'Viewer',
+  calltaker: 'Call intake', police: 'Security dispatcher', fire: 'Fire (historical duty)', ems: 'EMS (historical duty)', dispatcher: 'Dispatcher',
+  supervisor: 'Supervisor', admin: 'Administrator', records: 'Records', field: 'Security officer (MDT)', viewer: 'Viewer',
 }
 
 // This browser's own position name when it is not an enrolled workstation: made once and kept, so its
@@ -109,7 +109,7 @@ export default function Login() {
           <section aria-labelledby="demo-h" className="panel rounded-xl border-l-4 border-l-sky-400 p-4 shadow-2xl">
             <h2 id="demo-h" className="text-sm font-semibold text-slate-50">Try it with the demo account</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              A working console on invented data: simulated 911 calls arrive as you watch, and everything goes back to the demonstration data every
+              A working console on invented data: simulated calls arrive as you watch, and everything goes back to the demonstration data every
               night. Every call and record here is fictional.
             </p>
             {(demo.duties?.length ?? 0) > 1 && (
@@ -127,16 +127,17 @@ export default function Login() {
         )}
         {unreachable && (
           <p role="alert" className="w-full rounded-lg border border-rose-700 bg-rose-950/60 p-3 text-xs leading-relaxed text-rose-100">
-            <b>The bitdispatcher server is not answering.</b> This page may be the copy this browser saved, so signing in will not work yet. It keeps trying; check the network connection, or that nothing between here and the server (a firewall or web filter) blocks it.
+            <b>The LAS Operations server is not answering.</b> This page may be the copy this browser saved, so signing in will not work yet. It keeps trying; check the network connection, or that nothing between here and the server (a firewall or web filter) blocks it.
           </p>
         )}
-        {notice && <section aria-label="System use notice" className="w-full whitespace-pre-wrap rounded-lg border border-amber-600/60 bg-amber-950/40 p-3 text-xs leading-relaxed text-amber-100">{notice}</section>}
+        {(notice || 'AUTHORIZED USE ONLY — Lakes Area Security Corporation. Access and activity are recorded.') && <section aria-label="System use notice" className="w-full whitespace-pre-wrap rounded-lg border border-amber-600/60 bg-amber-950/40 p-3 text-xs leading-relaxed text-amber-100">{notice || 'AUTHORIZED USE ONLY — Lakes Area Security Corporation. Access and activity are recorded.'}</section>}
+        <p className="text-center text-xs font-semibold uppercase tracking-widest text-amber-300">North Dakota · CAD / MDT / Records</p>
         <form onSubmit={submit} className="panel w-full space-y-4 rounded-xl p-6 shadow-2xl" aria-labelledby="login-h">
-          <div className="flex items-center gap-2">
-            <Logo size={28} />
-            <h1 id="login-h" className="text-lg font-bold text-slate-50">bitdispatcher</h1>
-            <span className="ml-auto inline-flex items-center gap-1 text-xs text-slate-400" title={ws ? 'This computer is enrolled as a workstation' : 'Not an enrolled workstation: it signs in as a web position'}>
-              <MonitorCheck size={13} className={ws ? 'text-emerald-400' : 'text-slate-600'} aria-hidden /> {ws || '911 CAD'}
+          <div className="flex flex-wrap items-center gap-3">
+            <Logo size={64} />
+            <h1 id="login-h" className="min-w-0 flex-1 text-lg font-bold text-slate-50">Lakes Area Security</h1>
+            <span className="inline-flex w-full items-center gap-1 text-xs text-slate-400" title={ws ? 'This computer is enrolled as a workstation' : 'Not an enrolled workstation: it signs in as a web position'}>
+              <MonitorCheck size={13} className={ws ? 'text-emerald-400' : 'text-slate-600'} aria-hidden /> {ws || 'Private security'}
             </span>
           </div>
           {!askingDuty && (

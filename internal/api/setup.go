@@ -368,6 +368,23 @@ func (s *Server) setupView() SetupView {
 		add(SetupStep{ID: "support", Title: "Decide who supports you", Need: "recommended", Page: "support", Chapter: "admin-support",
 			Why: "Write down who to call when something goes wrong at 3 a.m.: your IT staff, a support agreement, or community support.", Detail: sp}, sp != "", false)
 	})
+	if s.LAS {
+		steps = slices.DeleteFunc(steps, func(x SetupStep) bool { return x.ID == "ncic" })
+		for i := range steps {
+			switch steps[i].ID {
+			case "agency":
+				steps[i].Title = "Confirm Lakes Area Security and incident numbering"
+			case "stations":
+				steps[i].Title = "Add offices and security posts"
+			case "units":
+				steps[i].Title = "Configure security units"
+			case "gis":
+				steps[i].Why = "Import county address points and service zones to improve private-security address search."
+			case "users":
+				steps[i].Why = "Named accounts and reviewed permissions keep employee actions attributable. Authenticator use follows the owner's security policy."
+			}
+		}
+	}
 	v := SetupView{Steps: steps, GoLive: goLive, Support: support}
 	if strings.TrimSpace(v.Support) == "" {
 		v.Support = DefaultSupport

@@ -4,10 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import * as maplibregl from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { toast } from 'sonner'
-import { FileText, Image as ImageIcon, LocateFixed, LogOut, MapPin, Navigation, Phone, Send, ShieldAlert, Siren, HardHat } from 'lucide-react'
+import { FileText, Image as ImageIcon, LocateFixed, LogOut, MapPin, Navigation, Phone, Send, Siren, HardHat } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import NcicPanel from '../rms/NcicPanel'
-import type { Meta } from '../rms/Rms'
 import { api, errText } from '../api'
 import { signOut, useStore } from '../store'
 import { Logo, StatusChip } from '../ui'
@@ -52,9 +50,7 @@ export default function Mdt() {
   const [route, setRoute] = useState<RouteView | null>(null)
   const now = useNow()
   const nav = useNavigate()
-  const [ncic, setNcic] = useState(false)
   const [crewOpen, setCrewOpen] = useState(false)
-  const [rmsMeta, setRmsMeta] = useState<Meta | null>(null)
   const unitParam = me?.role === 'field' ? '' : `?unit=${encodeURIComponent(me?.console ?? '')}`
   const load = () => api.get<MDTView>('/mdt' + unitParam).then((v) => { setM(v); setErr('') }).catch((e) => setErr(errText(e)))
   // Follow every change the server announces.
@@ -171,7 +167,6 @@ export default function Mdt() {
             nav(`/rms/${r.report.number}`)
           } catch (e) { toast.error(errText(e)) }
         }}><FileText size={14} aria-hidden /> Report</button>}
-        <button className="btn h-9" onClick={() => api.get<Meta>('/rms/meta').then((x) => { setRmsMeta(x); setNcic(true) }).catch((e) => toast.error(errText(e)))}><ShieldAlert size={14} aria-hidden /> NCIC</button>
         <Link to="/rms" className="btn h-9">My reports</Link>
         {(m.roster?.length ?? 0) > 0 && <button className="btn h-9" onClick={() => setCrewOpen(true)}><HardHat size={14} aria-hidden /> Crew {u!.crew?.length ? `(${u!.crew.length})` : ''}</button>}
         <span className="text-xs text-slate-500">{me?.name}</span>
@@ -307,7 +302,6 @@ export default function Mdt() {
         </section>
         <MdtMap m={m} route={route} here={here} />
       </div>
-      {rmsMeta && <NcicPanel open={ncic} onOpenChange={setNcic} meta={rmsMeta} reason={inc?.number ?? ''} />}
       {crewOpen && (
         <CrewDialog view={{ units: [m.unit], roadmap: { members: m.roster ?? [] } } as unknown as View} unitId={m.unit.id} onClose={() => { setCrewOpen(false); load() }}
           save={async (crew) => { await api.put('/mdt/crew' + unitParam, { crew }) }} />

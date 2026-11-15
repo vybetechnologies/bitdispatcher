@@ -12,7 +12,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request)
       .then((r) => {
-        if (r.ok && (e.request.mode === 'navigate' || u.pathname.startsWith('/assets/') || u.pathname === '/favicon.svg')) {
+        if (r.ok && (e.request.mode === 'navigate' || u.pathname.startsWith('/assets/') || ['/favicon.svg', '/las-logo.webp', '/inter.woff2'].includes(u.pathname))) {
           const copy = r.clone()
           caches.open(CACHE).then((c) => c.put(key, copy))
         }

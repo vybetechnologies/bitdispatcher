@@ -57,6 +57,7 @@ type Integrations struct {
 
 // Server is the API.
 type Server struct {
+	LAS            bool       // private-security runtime; never inferred from a mutable agency name
 	enrol          enrolCodes // one-time workstation enrolment codes
 	texts          *fileTextIndex
 	textsOnce      sync.Once
@@ -255,6 +256,11 @@ func (s *Server) spill(a ng911.ALI, from string) {
 // bearer-authenticated, for a plain-HTTP listener on this computer's loopback (-hooks-addr) when the
 // sender cannot be made to trust bitdispatcher's certificate. Nothing else is reachable through it.
 func (s *Server) HooksHandler() http.Handler {
+	if s.LAS {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fail(w, 403, "government integration hooks are unavailable for LAS")
+		})
+	}
 	m := http.NewServeMux()
 	m.Handle("POST /api/ng911/eido", s.eidoPush())
 	m.Handle("POST /api/radio/events", s.radioPush())
@@ -262,6 +268,10 @@ func (s *Server) HooksHandler() http.Handler {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if s.LAS && restrictedLASPath(r.URL.Path) {
+		fail(w, http.StatusForbidden, "unavailable for Lakes Area Security private-security operations")
+		return
+	}
 	h := w.Header()
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "DENY")
@@ -383,6 +393,9 @@ func personOf(se *auth.Session) string {
 
 func (s *Server) routes() {
 	m := s.mux
+	if s.LAS {
+		s.lasRoutes()
+	}
 	m.HandleFunc("GET /api/version", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"name": "bitdispatcher", "version": s.Version})
 	})
@@ -1533,6 +1546,18 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request, se *auth.S
 	if !readJSON(w, r, &v) {
 		return
 	}
+	if s.LAS && (v.ORI != "" || v.NCICMode != "" && v.NCICMode != "off" || v.NCICAddr != "") {
+		fail(w, 422, "government message-switch access is unavailable for LAS; leave ORI and adapter empty and NCIC off")
+		return
+	}
+	if s.LAS {
+		for _, t := range v.UnitTypes {
+			if t.Discipline != "police" && t.Discipline != "other" {
+				fail(w, 422, "LAS unit types use Security or Support")
+				return
+			}
+		}
+	}
 	if err := s.Eng.SaveSettings(a, v); err != nil {
 		writeErr(w, err)
 		return
@@ -1588,6 +1613,10 @@ func (s *Server) removeUnit(w http.ResponseWriter, r *http.Request, se *auth.Ses
 func (s *Server) saveCallType(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
 	var v cad.CallType
 	if !readJSON(w, r, &v) {
+		return
+	}
+	if s.LAS && (v.Discipline != "police" && v.Discipline != "other" || v.PAR || v.NEMSIS != "") {
+		fail(w, 422, "use a Security or Support call type without public-safety reporting")
 		return
 	}
 	v.Code = r.PathValue("code")
@@ -1713,6 +1742,10 @@ func (s *Server) saveIntegrations(w http.ResponseWriter, r *http.Request, se *au
 		ALIListen           *string `json:"aliListen"`
 	}
 	if !readJSON(w, r, &in) {
+		return
+	}
+	if s.LAS && (in.ALIListen != nil && *in.ALIListen != "" || in.EIDOToken != "" && in.EIDOToken != "-" || in.RadioSecret != "" && in.RadioSecret != "-") {
+		fail(w, 422, "public-safety ALI, EIDO and radio connections are unavailable for LAS")
 		return
 	}
 	s.mu.Lock()
