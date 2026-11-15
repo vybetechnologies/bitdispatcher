@@ -26,3 +26,8 @@
 
 # translated manuals' PDFs are built by make manual and published on the website, not committed
 /docs/manual/*/bitdispatcher-manual.pdf
+
+# Local build logs and private verification screenshots
+/tmp/
+/docs/las-live-own-unit-mdt.jpg
+/docs/las-live-unit-bindings.jpg

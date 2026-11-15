@@ -130,3 +130,19 @@ check passed with six passes, six warnings and zero failures, including ledger r
 and 16 dry-run call types at Fargo. Setup reached 16/16 by recording the owners-only
 account rationale as an administrator override; diagnostic warnings remain visible.
 Mason and Dylan's original accounts retain MFA and Administrator, with MDT duty added.
+
+## Final live verification
+
+LAS4 is running on the existing Fly machine with one passing health check. The
+Linux build passed the complete Go suite and the web build passed all 98 tests.
+Current account bindings were verified in the live Users page: Mason's admin
+account -> 12-A-1901, dylan.sebesta -> 12-A-1902. Both retain Administrator and
+MDT duties and their existing MFA. A real request by Mason for Dylan's MDT unit
+was denied; Mason's own terminal loaded with GPS off and Administration available.
+The owner's separately added Mavis account/unit was preserved.
+
+The public calls page is live at https://lakesareasecurity.com/calls. Its public
+API returned 200 with no eligible calls during verification. Website release
+668c5a94-9234-43a2-bdf2-ec73230208c2 is documented in the Lakes Area Security
+repository's codex/public-calls worktree. This is an automatic limited feed,
+not a Management account/data integration.
