@@ -35,3 +35,13 @@ Tests cover assigned-unit/role/CSRF denials, person and vehicle combined criteri
 identifier/notes redaction, restricted records, input rejection, hash-only audit,
 request routing, distinct forms and failed-versus-empty results. No test records
 are created in production.
+
+## Release verification
+
+v0.1.0-las5 was deployed to the existing LAS Fly machine on November 15, 2026.
+The full Linux Go suite passed in the image build, including both new endpoint
+tests. The web build and all 101 frontend tests passed. Public health and version
+checks returned 200 and Fly reported its machine healthy. The live post-release
+visual check is pending a new sign-in, since sessions are held in process memory.
+Passwords, MFA enrollment, account duties, assigned-unit bindings and operational
+records were not reset or migrated by this release.
