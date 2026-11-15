@@ -70,3 +70,14 @@ restore with explicit acknowledgement of data written after the backup.
 The pre-release Fly snapshot requested during this work is
 `vs_Qe0k689GmOmAfm8Om0AqY` on volume `vol_rnzqolegm7ewkz8r`; it was verified created.
 Fly snapshot retention shown at creation is five days. It is not a permanent off-site backup.
+
+## Deployment verification
+
+On 2026-11-15 at 05:57 UTC, release v0.1.0-las2 was deployed to the existing
+Fly machine and data volume. The Linux image build passed the complete Go test
+suite before producing the binary; the web build and all 98 frontend tests passed.
+The custom hostname returned healthy status, the new version and logo, and 403
+for government query access. The sign-in page was visually verified with LAS
+branding. The existing authenticator enrollment was preserved. An administrator
+sign-in and the supported LAS configuration application remain pending; deployment
+alone does not replace an existing ledger's catalog. See las-live-login.jpg.
