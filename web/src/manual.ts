@@ -671,9 +671,10 @@ Browsers keep a page silent until someone has used it. After a reload, the first
 **Unit recall** (from a unit in the results, or a unit's History): one unit over a period, in one timeline: its statuses and mark-outs, the incidents with their type and address, who staffed it and in what position, status checks, messages, and where it was by AVL or radio. Narrow it by responder, status or incident; download it as CSV.`,
   },
   {
-    id: 'mdt', title: 'Mobile data terminal', route: '/mdt', keys: 'mdt mobile terminal field crew vehicle laptop tablet gps',
+    id: 'mdt', title: 'Mobile data terminal', route: '/mdt', keys: 'mdt mobile terminal field crew vehicle laptop tablet gps person persons vehicle search lookup records',
     body: `A crew signs in on the vehicle's laptop or tablet with a **field** account (Admin › Users) and the unit's call sign as the position (\`E1\`). The terminal opens at once.
 
+- **Persons & vehicles** opens LAS CAD record search inside the terminal. Search name/alias with optional birth date, or a plate with state and/or VIN. Choose the operational purpose. These are possible local record matches, not NCIC/DMV returns or verified identities. Juvenile, medical, removed and other-agency records are excluded. Query values are not stored in the search audit; a fingerprint, fields, purpose, unit and result count are recorded. No matching record does not mean a person or vehicle has no history.
 - **The assignment**: type, priority, address in large type, the road route drawn on the map with its time and the roads it takes, the callback, the other units on it, and the notes from dispatch, newest first. Priority notes stand out.
 - **Status buttons**: one tap each, with the usual next status highlighted; \`F1\` to \`F6\` on a keyboard.
 - **Notes to dispatch** go on the incident's timeline as the unit's.

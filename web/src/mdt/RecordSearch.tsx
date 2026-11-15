@@ -1,0 +1,74 @@
+import { useEffect, useRef, useState } from 'react'
+import { Car, Search, ShieldAlert, UserRound } from 'lucide-react'
+import { api, errText } from '../api'
+import { Modal } from '../ui'
+import { cx } from '../util'
+
+type Hit = { record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
+type Results = { kind:'person'|'vehicle'; items:Hit[]; more:boolean; source:string; searchedAt:string }
+
+/** Private local-record lookup, kept inside MDT so it never changes the user's duty or assigned unit. */
+export default function RecordSearch({onClose}:{onClose:()=>void}) {
+ const [kind,setKind]=useState<'person'|'vehicle'>('person')
+ const [name,setName]=useState('')
+ const [dob,setDob]=useState('')
+ const [plate,setPlate]=useState('')
+ const [state,setState]=useState('')
+ const [vin,setVin]=useState('')
+ const [purpose,setPurpose]=useState('assigned-call')
+ const [busy,setBusy]=useState(false)
+ const [error,setError]=useState('')
+ const [result,setResult]=useState<Results|null>(null)
+ const request=useRef(0)
+ useEffect(()=>()=>{request.current++},[])
+ const changeKind=(next:'person'|'vehicle')=>{request.current++;setKind(next);setError('');setResult(null)}
+ const search=async(e:React.FormEvent)=>{
+  e.preventDefault();if(busy)return;const id=++request.current;setBusy(true);setError('');setResult(null)
+  try{const response=await api.post<Results>('/mdt/records/search',{kind,purpose,...(kind==='person'?{name,dob}:{plate,state,vin})});if(request.current===id)setResult(response)}
+  catch(e){if(request.current===id)setError(errText(e))}
+  finally{if(request.current===id)setBusy(false)}
+ }
+ return <Modal open onClose={onClose} title="Persons & vehicles" icon={<Search size={18} className="text-amber-300" />} wide>
+  <div className="space-y-4">
+   <div className="flex gap-2" role="tablist" aria-label="Record type">
+    <button role="tab" aria-selected={kind==='person'} aria-controls="mdt-lookup-panel" id="mdt-person-tab" disabled={busy} onClick={()=>changeKind('person')} className={cx('btn min-h-11 flex-1 justify-center',kind==='person'&&'border-amber-500/60 bg-amber-500/15 text-amber-200')}><UserRound size={17} aria-hidden /> Persons</button>
+    <button role="tab" aria-selected={kind==='vehicle'} aria-controls="mdt-lookup-panel" id="mdt-vehicle-tab" disabled={busy} onClick={()=>changeKind('vehicle')} className={cx('btn min-h-11 flex-1 justify-center',kind==='vehicle'&&'border-amber-500/60 bg-amber-500/15 text-amber-200')}><Car size={17} aria-hidden /> Vehicles</button>
+   </div>
+   <p className="text-xs leading-relaxed text-slate-400">LAS CAD records only. Searches are logged. These are possible record matches, not identity verification, warrant checks, or DMV/NCIC returns.</p>
+   <div id="mdt-lookup-panel" role="tabpanel" aria-labelledby={kind==='person'?'mdt-person-tab':'mdt-vehicle-tab'}>
+    <form onSubmit={search} className="space-y-3">
+     <fieldset disabled={busy} className="space-y-3">
+      {kind==='person'?<div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+       <label className="label">Name or alias<input className="input h-11" autoFocus autoComplete="off" value={name} maxLength={100} onChange={e=>{setName(e.target.value);setResult(null)}} placeholder="Last, first or partial name" required minLength={2} /></label>
+       <label className="label">Date of birth (optional)<input className="input h-11" type="date" value={dob} onChange={e=>{setDob(e.target.value);setResult(null)}} /></label>
+      </div>:<>
+       <div className="grid grid-cols-[2fr_1fr] gap-3">
+        <label className="label">Plate<input className="input h-11 font-mono uppercase" autoFocus autoComplete="off" value={plate} maxLength={20} onChange={e=>{setPlate(e.target.value.toUpperCase());setResult(null)}} placeholder="Full or partial plate" /></label>
+        <label className="label">State (optional)<input className="input h-11 font-mono uppercase" autoComplete="off" value={state} maxLength={2} onChange={e=>{setState(e.target.value.toUpperCase());setResult(null)}} placeholder="ND" /></label>
+       </div>
+       <label className="label">VIN (optional)<input className="input h-11 font-mono uppercase" autoComplete="off" value={vin} maxLength={17} onChange={e=>{setVin(e.target.value.toUpperCase());setResult(null)}} placeholder="Full VIN or at least four characters" /></label>
+       <p className="text-xs text-slate-400">Enter at least two plate characters or four VIN characters. Provided fields must all match.</p>
+      </>}
+      <div className="flex flex-wrap items-end gap-3">
+       <label className="label min-w-48 flex-1">Operational purpose<select className="input h-11" value={purpose} onChange={e=>setPurpose(e.target.value)}><option value="assigned-call">Assigned call</option><option value="patrol">Patrol duties</option><option value="follow-up">Incident follow-up</option></select></label>
+       <button type="submit" className="btn btn-go h-11 px-5"><Search size={17} aria-hidden /> Search LAS records</button>
+      </div>
+     </fieldset>
+    </form>
+   </div>
+   {busy&&<p role="status" className="text-sm text-slate-300">Searching LAS records…</p>}
+   {error&&<p role="alert" className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">{error}</p>}
+   {result&&<section aria-label="Search results" className="space-y-3">
+    <p role="status" className="text-sm text-slate-300">{result.items.length===0?'No matching LAS records.':`${result.items.length}${result.more?'+':''} matching records`} <span className="text-xs text-slate-500">· {new Date(result.searchedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></p>
+    {result.items.length===0&&<p className="text-xs text-slate-400">Try another spelling or refine the identifiers. No match does not establish that a person or vehicle has no history.</p>}
+    {result.more&&<p className="text-xs text-amber-200">Showing the newest 50 matches. Add a birth date, plate state, or more characters to narrow the search.</p>}
+    {result.items.map(hit=><article key={hit.incident+':'+hit.record} className="rounded-lg border border-slate-700 bg-slate-900 p-3">
+     <div className="flex flex-wrap items-start gap-2"><h3 className="flex-1 text-base font-semibold text-slate-100">{result.kind==='person'?hit.name:[hit.plate||'No plate recorded',hit.state].filter(Boolean).join(' · ')}</h3><span className="chip border border-slate-600 text-xs text-slate-300">Local record · possible match</span></div>
+     {result.kind==='person'?<><p className="mt-1 text-sm text-slate-300">DOB {hit.dob||'not recorded'}{hit.sex?` · Sex ${hit.sex}`:''}</p>{hit.description&&<p className="mt-1 text-sm text-slate-400">{hit.description}</p>}</>:<><p className="mt-1 text-sm text-slate-300">{[hit.color,hit.year,hit.make,hit.model,hit.body].filter(Boolean).join(' · ')||'Description not recorded'}</p><p className="mt-1 font-mono text-sm text-slate-400">VIN {hit.vin||'not recorded'}</p></>}
+     {hit.safetyConcern&&<p className="mt-2 flex items-center gap-2 rounded border border-amber-700 bg-amber-950/40 p-2 text-sm text-amber-200"><ShieldAlert size={16} aria-hidden />Recorded safety concern. Confirm current details with dispatch.</p>}
+     <p className="mt-2 text-xs text-slate-500">LAS incident <span className="font-mono text-slate-300">{hit.incident}</span> · recorded {new Date(hit.seen).toLocaleDateString()}</p>
+    </article>)}
+   </section>}
+  </div>
+ </Modal>
+}

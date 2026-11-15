@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import * as maplibregl from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { toast } from 'sonner'
-import { FileText, Image as ImageIcon, LocateFixed, LogOut, MapPin, Navigation, Phone, Send, Siren, HardHat } from 'lucide-react'
+import { FileText, Image as ImageIcon, LocateFixed, LogOut, MapPin, Navigation, Phone, Send, Siren, HardHat, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, errText } from '../api'
 import { signOut, useStore } from '../store'
@@ -14,6 +14,7 @@ import { ViewsButton } from '../views/PlaceViews'
 import MdtMessages from './Messages'
 import MdtBulletins from './Bulletins'
 import MdtRoads from './Roads'
+import RecordSearch from './RecordSearch'
 import { clock, cx, mi, prio, statusMeta, useNow } from '../util'
 import { CrewDialog } from '../console/Roadmap'
 import type { MemberBrief, PaperFlag, BOLO, MarkOutType, Incident, Position, Premise, RouteView, Station, Unit, UnitMessage, View } from '../types'
@@ -51,6 +52,7 @@ export default function Mdt() {
   const now = useNow()
   const nav = useNavigate()
   const [crewOpen, setCrewOpen] = useState(false)
+  const [lookupOpen, setLookupOpen] = useState(false)
   const [sendGps, setSendGps] = useState(false)
   const unitParam = ''
   const unitPicker = <span className="text-sm">Assigned MDT unit: {me?.mdtUnit || 'Unassigned'}</span>
@@ -130,6 +132,7 @@ export default function Mdt() {
   // Function keys: one press per status, as on a console.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (lookupOpen) return
       if (e.key === 'F7') {
         e.preventDefault()
         setMoOpen((o) => !o)
@@ -174,6 +177,7 @@ export default function Mdt() {
           } catch (e) { toast.error(errText(e)) }
         }}><FileText size={14} aria-hidden /> Report</button>}
         <Link to="/rms" className="btn h-9">My reports</Link>
+        <button className="btn h-11" onClick={()=>setLookupOpen(true)}><Search size={17} aria-hidden /> Persons & vehicles</button>
         {(m.roster?.length ?? 0) > 0 && <button className="btn h-9" onClick={() => setCrewOpen(true)}><HardHat size={14} aria-hidden /> Crew {u!.crew?.length ? `(${u!.crew.length})` : ''}</button>}
         <span className="text-xs text-slate-500">{me?.name}</span>
         <button className="btn" onClick={signOut} aria-label="Sign out"><LogOut size={14} aria-hidden /></button>
@@ -181,6 +185,7 @@ export default function Mdt() {
       {m.emergency && !m.emergency.ackedBy && (
         <div role="alert" className="animate-pulse bg-rose-700 px-3 py-2 text-center text-lg font-black tracking-wide">EMERGENCY SENT {clock(m.emergency.raised, now)} · waiting for dispatch to acknowledge</div>
       )}
+      {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} />}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(24rem,36rem)_1fr]">
         <section className="flex min-h-0 flex-col gap-2 overflow-y-auto p-3">
           {inc ? (
