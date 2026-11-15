@@ -3,14 +3,14 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Trash2, UserCog } from 'lucide-react'
 import { api, errText } from '../api'
-import { useStore } from '../store'
+import { checkMe, useStore } from '../store'
 import { Field, Modal } from '../ui'
 import { ago, useNow } from '../util'
 import type { Session } from '../types'
 import { Page, Table } from './Admin'
 
-type U = { username: string; name: string; role: string; disabled?: boolean; demo?: boolean; created: string; lastIn?: string; duties?: string[]; mfa?: boolean }
-type Draft = { username: string; name: string; role: string; password: string; disabled: boolean; demo: boolean; isNew: boolean; duties: string[]; mfa: boolean }
+type U = { mdtUnit?: string; username: string; name: string; role: string; disabled?: boolean; demo?: boolean; created: string; lastIn?: string; duties?: string[]; mfa?: boolean }
+type Draft = { mdtUnit: string; username: string; name: string; role: string; password: string; disabled: boolean; demo: boolean; isNew: boolean; duties: string[]; mfa: boolean }
 
 // The duties a person can hold, in the order the sign-in page offers them; their role follows from them.
 const DUTIES = SECURITY_DUTIES
@@ -25,6 +25,7 @@ const ROLES = [
 
 export default function Users() {
   const now = useNow()
+  const view = useStore(s => s.view)
   const me = useStore((s) => s.me)
   const [items, setItems] = useState<U[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
@@ -45,6 +46,7 @@ export default function Users() {
       const role = roleFor(d.duties) || d.role
       const r = await api.put<{ password?: string }>(`/admin/users/${name}`, { name: d.name, role, password: d.password, disabled: d.disabled, demo: d.demo, generate })
       if (d.duties.length) await api.put(`/admin/users/${name}/duties`, { duties: d.duties })
+      await api.put(`/admin/users/${name}/mdt-unit`, { unit: d.mdtUnit }); await checkMe()
       if (r.password) setShown(previous => [...previous.filter(item => item.username !== d.username), { username: d.username, password: r.password! }])
       toast.success(`${d.username} saved`)
       setD(null)
@@ -57,7 +59,7 @@ export default function Users() {
     <Page
       title="Users and positions"
       intro="Who can sign in, and the duties each holds. At sign-in a person chooses the duty they are working; what they may do follows it, and the workstation gives the position. Every action is recorded with the person, the duty and the position."
-      actions={<button className="btn btn-go" onClick={() => setD({ username: '', name: '', role: 'dispatcher', password: '', disabled: false, demo: false, isNew: true, duties: ['calltaker', 'dispatcher'], mfa: false })}><Plus size={14} aria-hidden /> Add user</button>}
+      actions={<button className="btn btn-go" onClick={() => setD({ username: '', name: '', role: 'dispatcher', password: '', disabled: false, demo: false, isNew: true, duties: ['calltaker', 'dispatcher'], mfa: false, mdtUnit: '' })}><Plus size={14} aria-hidden /> Add user</button>}
     >
       {shown.length > 0 && (
         <div role="status" className="mb-3 rounded-lg border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200">
@@ -65,13 +67,13 @@ export default function Users() {
           <button className="btn ml-3" onClick={() => setShown([])}>Done</button>
         </div>
       )}
-      <Table head={['Username', 'Name', 'Duties', 'MFA', 'Last sign-in', 'State']}>
+      <Table head={['Username', 'Name', 'Duties', 'MDT unit', 'MFA', 'Last sign-in', 'State']}>
         {items.map((u) => (
-          <tr key={u.username} className="cursor-pointer hover:bg-slate-800/50" onClick={() => setD({ username: u.username, name: u.name, role: u.role, password: '', disabled: !!u.disabled, demo: !!u.demo, isNew: false, duties: u.duties ?? [], mfa: !!u.mfa })}>
+          <tr key={u.username} className="cursor-pointer hover:bg-slate-800/50" onClick={() => setD({ username: u.username, name: u.name, role: u.role, password: '', disabled: !!u.disabled, demo: !!u.demo, isNew: false, duties: u.duties ?? [], mfa: !!u.mfa, mdtUnit: u.mdtUnit ?? '' })}>
             <td className="px-3 py-1.5 font-mono text-slate-100">{u.username}{u.username === me?.username && <span className="ml-1 text-xs text-slate-500">(you)</span>}{u.demo && <span className="chip ml-2 bg-sky-500/20 px-1.5 text-[10px] font-bold uppercase text-sky-200" title="Offered on the sign-in page: Sign in as the demo user">demo</span>}</td>
             <td className="px-3 text-slate-200">{u.name}</td>
             <td className="px-3 text-xs text-slate-300">{(u.duties ?? [u.role]).map((x) => DUTIES.find(([k]) => k === x)?.[1] ?? x).join(', ')}</td>
-            <td className="px-3 text-xs">{u.mfa ? <span className="text-emerald-300">on</span> : <span className="text-slate-500">—</span>}</td>
+            <td className="px-3 font-mono text-xs">{u.mdtUnit || 'Unassigned'}</td><td className="px-3 text-xs">{u.mfa ? <span className="text-emerald-300">on</span> : <span className="text-slate-500">—</span>}</td>
             <td className="px-3 text-xs text-slate-400">{u.lastIn ? `${ago(u.lastIn, now)} ago` : 'never'}</td>
             <td className="px-3 text-xs">{u.disabled ? <span className="text-rose-300">disabled</span> : <span className="text-emerald-300">active</span>}</td>
           </tr>
@@ -122,7 +124,7 @@ export default function Users() {
                 ))}
               </div>
               <p className="mt-1 text-xs text-slate-500">{d.username === me?.username ? 'Keep Administrator selected to preserve your administrative access. MDT is a separate field duty; it does not remove Administrator.' : `Rights: ${ROLES.find(([v]) => v === (roleFor(d.duties) || d.role))?.[1] ?? '—'}. A supervisor keeps supervisory rights when covering a position; an administrator works as one only when signed in as Administrator.`}</p>
-            </fieldset>
+            </fieldset><Field label="Assigned MDT unit" htmlFor="mdt-unit" hint="This account can operate only this unit through MDT, including when signed in as Administrator. Unassigned accounts cannot open MDT."><select id="mdt-unit" className="input" value={d.mdtUnit} onChange={e => setD({...d, mdtUnit: e.target.value})}><option value="">Unassigned</option>{view?.units.map(u => <option key={u.id} value={u.id}>{u.id} · {u.name}</option>)}</select></Field>
             {!d.isNew && (
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 One-time codes: {d.mfa ? <span className="text-emerald-300">set up</span> : <span className="text-slate-500">not set up</span>}

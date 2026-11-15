@@ -253,7 +253,7 @@ export type History = { number: string; type?: string; address?: string; lat: nu
 export type Duty = 'calltaker' | 'police' | 'fire' | 'ems' | 'dispatcher' | 'supervisor' | 'admin' | 'records' | 'field' | 'viewer'
 export type Session = {
   username: string; name: string; role: 'viewer' | 'field' | 'dispatcher' | 'supervisor' | 'admin'; console: string; from: string; created: string; last: string
-  training?: boolean; exercise?: string; duty: Duty; locked?: boolean; lockedAt?: string; active?: string; workstation?: string
+  mdtUnit?: string; training?: boolean; exercise?: string; duty: Duty; locked?: boolean; lockedAt?: string; active?: string; workstation?: string
 }
 
 export type Candidate = { unit: string; type: string; capability: string; metres?: number; seconds?: number; from: string; routed?: boolean; reasons: string[] }

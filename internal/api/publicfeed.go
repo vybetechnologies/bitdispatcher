@@ -219,6 +219,9 @@ func strs(v []string) []string {
 
 // publicFeedPusher posts the feed to the push address when it changes, at most every 5 seconds.
 func (s *Server) publicFeedPusher(ctx context.Context) {
+	if s.LAS {
+		return
+	}
 	ch := s.Eng.Subscribe()
 	defer s.Eng.Unsubscribe(ch)
 	tick := time.NewTicker(5 * time.Second)

@@ -107,3 +107,26 @@ an administrator session remains administrative. MDT has a unit selector for aut
 console roles. Device GPS is shared only after the user chooses Share device GPS.
 Selecting another unit stops GPS sharing. Generated account passwords remain masked
 in the browser for secure owner handoff and are not written to documentation or logs.
+
+## LAS4 privacy and MDT restrictions
+
+Supersedes the earlier administrator MDT selector: every LAS MDT request now resolves the
+account's explicit assigned unit, including Administrator sessions. Another unit in a query
+is denied. Unassigned accounts are denied; assignment removal is immediate, assignments
+are unique and persistent, and the change is attributed in the ledger. Administrative
+configuration rights remain intact. Planned live bindings are admin -> 12-A-1901 and
+dylan.sebesta -> 12-A-1902, through Users and positions.
+
+The separate /api/public/las-calls endpoint publishes eligible call categories automatically
+after five minutes, with 15-minute approximate received times, broad metro area and a
+hundred-block street only when a clean street address is recognizable. It never copies
+persons, units, narratives, clients, exact locations, coordinates or attachments. Sensitive
+and unknown types are excluded; an attributed per-incident confidentiality exclusion is
+available. Active/Closed updates automatically; history is bounded to 90 days / 1,000 entries.
+The old upstream public incident endpoint and pusher are unavailable in LAS.
+
+The live LAS profile was applied at ledger events 310-356. The subsequent real go-live
+check passed with six passes, six warnings and zero failures, including ledger restore
+and 16 dry-run call types at Fargo. Setup reached 16/16 by recording the owners-only
+account rationale as an administrator override; diagnostic warnings remain visible.
+Mason and Dylan's original accounts retain MFA and Administrator, with MDT duty added.

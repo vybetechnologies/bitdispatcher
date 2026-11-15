@@ -34,7 +34,7 @@ type MDTView = {
 const NEXT: Record<string, string> = { dispatched: 'enroute', enroute: 'onscene', onscene: 'available', transporting: 'atdestination', atdestination: 'available' }
 const BUTTONS: { s: string; label: string; key: string }[] = [
   { s: 'enroute', label: 'En route', key: 'F1' }, { s: 'onscene', label: 'On scene', key: 'F2' }, { s: 'transporting', label: 'Transporting', key: 'F3' },
-  { s: 'atdestination', label: 'At hospital', key: 'F4' }, { s: 'available', label: 'Available', key: 'F5' }, { s: 'oos', label: 'Out of service', key: 'F6' },
+  { s: 'atdestination', label: 'At destination', key: 'F4' }, { s: 'available', label: 'Available', key: 'F5' }, { s: 'oos', label: 'Out of service', key: 'F6' },
 ]
 
 const base = () => location.origin + location.pathname.replace(/[^/]*$/, '')
@@ -51,11 +51,9 @@ export default function Mdt() {
   const now = useNow()
   const nav = useNavigate()
   const [crewOpen, setCrewOpen] = useState(false)
-  const [selectedUnit, setSelectedUnit] = useState(() => localStorage.getItem(`las.mdt.unit.${me?.username}`) ?? '')
   const [sendGps, setSendGps] = useState(false)
-  const unitParam = me?.role === 'field' ? '' : `?unit=${encodeURIComponent(selectedUnit || me?.console || '')}`
-  const chooseUnit = (id: string) => { setSendGps(false); setM(null); setSelectedUnit(id); localStorage.setItem(`las.mdt.unit.${me?.username}`, id) }
-  const unitPicker = me?.role !== 'field' && <label className="text-sm">MDT unit <select aria-label="MDT unit" className="input ml-2" value={selectedUnit} onChange={e => chooseUnit(e.target.value)}><option value="">Choose a unit</option>{view?.units.map(u => <option key={u.id} value={u.id}>{u.id} · {u.name || u.id}</option>)}</select></label>
+  const unitParam = ''
+  const unitPicker = <span className="text-sm">Assigned MDT unit: {me?.mdtUnit || 'Unassigned'}</span>
   const load = () => api.get<MDTView>('/mdt' + unitParam).then((v) => { setM(v); setErr('') }).catch((e) => setErr(errText(e)))
   // Follow every change the server announces.
   useEffect(() => {
@@ -163,7 +161,7 @@ export default function Mdt() {
         <StatusChip status={u!.status} />
         <span className="text-xs text-slate-400">{u!.covering ? `covering ${u!.covering}` : m.station?.name}</span>
         <span className={cx('chip ml-2', gps === 'on' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')} title="Position from this device">
-          <LocateFixed size={12} aria-hidden /> GPS {gps === 'on' ? 'sending' : gps === 'denied' ? 'blocked: allow location' : gps === 'none' ? 'not available' : 'waiting'}
+          <LocateFixed size={12} aria-hidden /> GPS {!sendGps ? 'off' : gps === 'on' ? 'sending' : gps === 'denied' ? 'blocked: allow location' : gps === 'none' ? 'not available' : 'waiting'}
         </span>
         <button className="btn" onClick={() => setSendGps(v => !v)}>{sendGps ? 'Stop GPS' : 'Share device GPS'}</button>
         {me?.role !== 'field' && <Link to="/admin" className="btn">Administration</Link>}

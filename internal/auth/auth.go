@@ -41,6 +41,7 @@ const iterations = 600_000
 
 // User is a person who can sign in.
 type User struct {
+	MDTUnit  string    `json:"mdtUnit,omitempty"`
 	Username string    `json:"username"`
 	Name     string    `json:"name"`
 	Role     string    `json:"role"`
@@ -62,6 +63,7 @@ type User struct {
 
 // Public is a user without secrets.
 type Public struct {
+	MDTUnit  string    `json:"mdtUnit,omitempty"`
 	Username string    `json:"username"`
 	Name     string    `json:"name"`
 	Role     string    `json:"role"`
@@ -75,6 +77,7 @@ type Public struct {
 
 // Session is one signed-in browser.
 type Session struct {
+	MDTUnit  string    `json:"mdtUnit,omitempty"`
 	ID       string    `json:"-"`
 	Hash     string    `json:"hash"` // what the ledger records
 	Username string    `json:"username"`
@@ -305,7 +308,7 @@ func (s *Store) List() []Public {
 	out := []Public{}
 	for _, u := range s.users {
 		out = append(out, Public{Username: u.Username, Name: u.Name, Role: u.Role, Disabled: u.Disabled, Demo: u.Demo, Created: u.Created, LastIn: u.LastIn,
-			Duties: u.duties(), MFA: u.TOTP != ""})
+			Duties: u.duties(), MFA: u.TOTP != "", MDTUnit: u.MDTUnit})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Username < out[j].Username })
 	return out
@@ -404,7 +407,7 @@ func (s *Store) open(u *User, console, from string) *Session {
 	id := RandomToken(32)
 	sum := sha256.Sum256([]byte(id))
 	se := &Session{ID: id, Hash: hex.EncodeToString(sum[:8]), Username: u.Username, Name: u.Name, Role: u.Role,
-		Console: strings.TrimSpace(console), From: from, Created: now, Last: now, Active: now}
+		Console: strings.TrimSpace(console), From: from, Created: now, Last: now, Active: now, MDTUnit: u.MDTUnit}
 	s.sessions[id] = se
 	return se
 }

@@ -141,37 +141,38 @@ type actionData struct {
 
 // State is everything bitdispatcher knows, rebuilt from the ledger.
 type State struct {
-	Seq          uint64                   `json:"seq"`
-	Settings     Settings                 `json:"settings"`
-	Stations     map[string]*Station      `json:"stations"`
-	Units        map[string]*Unit         `json:"units"`
-	CallTypes    map[string]*CallType     `json:"callTypes"`
-	Incidents    map[string]*Incident     `json:"incidents"`
-	Calls        map[string]*Call         `json:"calls"`
-	Emergencies  map[string]*Emergency    `json:"emergencies"`
-	Users        map[string]*UserInfo     `json:"users"`
-	Advisory     AdvisoryState            `json:"advisory"`
-	Reports      map[string]*RMSReport    `json:"reports"`
-	Premises     map[string]*Premise      `json:"premises"`
-	Drones       map[string]*Drone        `json:"drones"`
-	Radio        []RadioLine              `json:"radio"`
-	Care         map[string]*CareCase     `json:"care"`
-	Breaks       map[string]*Break        `json:"breaks"`
-	TDoS         TDoS                     `json:"tdos"`
-	BOLOs        map[string]*BOLO         `json:"bolos"`
-	Facilities   map[string]*Facility     `json:"facilities"`
-	Plans        map[string]*ResponsePlan `json:"plans"`
-	Guidance     map[string]*GuidanceDoc  `json:"guidance"`
-	Passdown     []Passdown               `json:"passdown"`
-	Workstations map[string]*Workstation  `json:"workstations"`
-	FOIARules    map[string]*foia.Rule    `json:"foiaRules"`
-	FOIA         map[string]*FOIARequest  `json:"foia"`
-	tdos         tdosTrack
-	History      []History      `json:"-"` // incidents from an earlier system
-	rptCount     map[string]int // "site prefix|yy"
-	premCount    int
-	Messages     []*Message `json:"messages"` // the most recent messages to and from units
-	msgCount     int
+	LASPublicCalls map[string]LASPublicCall `json:"lasPublicCalls,omitempty"`
+	Seq            uint64                   `json:"seq"`
+	Settings       Settings                 `json:"settings"`
+	Stations       map[string]*Station      `json:"stations"`
+	Units          map[string]*Unit         `json:"units"`
+	CallTypes      map[string]*CallType     `json:"callTypes"`
+	Incidents      map[string]*Incident     `json:"incidents"`
+	Calls          map[string]*Call         `json:"calls"`
+	Emergencies    map[string]*Emergency    `json:"emergencies"`
+	Users          map[string]*UserInfo     `json:"users"`
+	Advisory       AdvisoryState            `json:"advisory"`
+	Reports        map[string]*RMSReport    `json:"reports"`
+	Premises       map[string]*Premise      `json:"premises"`
+	Drones         map[string]*Drone        `json:"drones"`
+	Radio          []RadioLine              `json:"radio"`
+	Care           map[string]*CareCase     `json:"care"`
+	Breaks         map[string]*Break        `json:"breaks"`
+	TDoS           TDoS                     `json:"tdos"`
+	BOLOs          map[string]*BOLO         `json:"bolos"`
+	Facilities     map[string]*Facility     `json:"facilities"`
+	Plans          map[string]*ResponsePlan `json:"plans"`
+	Guidance       map[string]*GuidanceDoc  `json:"guidance"`
+	Passdown       []Passdown               `json:"passdown"`
+	Workstations   map[string]*Workstation  `json:"workstations"`
+	FOIARules      map[string]*foia.Rule    `json:"foiaRules"`
+	FOIA           map[string]*FOIARequest  `json:"foia"`
+	tdos           tdosTrack
+	History        []History      `json:"-"` // incidents from an earlier system
+	rptCount       map[string]int // "site prefix|yy"
+	premCount      int
+	Messages       []*Message `json:"messages"` // the most recent messages to and from units
+	msgCount       int
 	// StationAlerts are the most recent tone-outs.
 	StationAlerts []*StationAlert      `json:"stationAlerts"`
 	alertBase     int                  // tone-outs dropped from the front, for numbering
@@ -327,6 +328,15 @@ func (s *State) apply(e ledger.Event) error {
 
 func (s *State) applyCore(e ledger.Event) error {
 	switch e.Type {
+	case EvLASPublicCall:
+		v, err := decode[LASPublicCall](e)
+		if err != nil {
+			return err
+		}
+		if s.LASPublicCalls == nil {
+			s.LASPublicCalls = map[string]LASPublicCall{}
+		}
+		s.LASPublicCalls[v.Incident] = v
 	case EvSettings:
 		v, err := decode[Settings](e)
 		if err != nil {

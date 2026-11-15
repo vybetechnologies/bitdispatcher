@@ -26,6 +26,25 @@ func (s *Server) mdtRoutes() {
 // terminal or working as a unit that has none); a viewer none.
 func (s *Server) mdtUnit(w http.ResponseWriter, r *http.Request, se *auth.Session) (string, bool) {
 	unit := ""
+	if s.LAS {
+		if se.Role != auth.Field && !auth.AtLeast(se.Role, auth.Dispatcher) {
+			fail(w, 403, "this duty cannot use MDT")
+			return "", false
+		}
+		unit = s.Auth.MDTUnitFor(se.Username)
+		requested := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("unit")))
+		if unit == "" || requested != "" && requested != unit {
+			fail(w, 403, "MDT access is limited to your assigned unit")
+			return "", false
+		}
+		known := false
+		s.Eng.Read(func(st *cad.State) { _, known = st.Units[unit] })
+		if !known {
+			fail(w, 404, "your assigned MDT unit is not configured")
+			return "", false
+		}
+		return unit, true
+	}
 	switch {
 	case se.Role == auth.Field:
 		unit = se.Console

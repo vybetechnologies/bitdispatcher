@@ -98,6 +98,14 @@ func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {
 	// A field crew signs in as its unit.
 	if se.Duty == auth.DutyField {
 		unit := firstNonEmpty(strings.ToUpper(strings.TrimSpace(b.Unit)), console)
+		if s.LAS {
+			unit = s.Auth.MDTUnitFor(se.Username)
+			if unit == "" || strings.TrimSpace(b.Unit) != "" && strings.ToUpper(strings.TrimSpace(b.Unit)) != unit {
+				s.Auth.Logout(se.ID)
+				fail(w, 403, "sign in using your assigned MDT unit")
+				return
+			}
+		}
 		known := false
 		s.Eng.Read(func(st *cad.State) { _, known = st.Units[unit] })
 		if !known {
