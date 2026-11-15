@@ -19,13 +19,33 @@ function db(): Promise<IDBDatabase> {
 }
 
 let last = 0
+let snapshotsPaused = false
+export function pauseSnapshots() { snapshotsPaused = true }
+export function resumeSnapshots() { snapshotsPaused = false }
+/** Drop the old duty's board without touching pending offline work. */
+export async function clearSnapshot() {
+  snapshotsPaused = true
+  last = 0
+  localStorage.setItem('bd.snapshot.invalid', String(Date.now()))
+  try {
+    const d = await db()
+    await new Promise<void>((resolve, reject) => {
+      const transaction = d.transaction(STORE, 'readwrite')
+      transaction.objectStore(STORE).delete('board')
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+    })
+  } catch { /* No persisted board when storage is unavailable. */ }
+}
 
 /** saveSnapshot keeps the board, at most every ten seconds. */
 export async function saveSnapshot(v: View) {
+  if (snapshotsPaused) return
   if (Date.now() - last < 10000) return
   last = Date.now()
   try {
     const d = await db()
+    if (snapshotsPaused) return
     d.transaction(STORE, 'readwrite').objectStore(STORE).put({ at: Date.now(), view: v }, 'board')
   } catch {
     // A browser without storage simply has no offline board.
@@ -38,7 +58,10 @@ export async function loadSnapshot(): Promise<{ at: number; view: View } | null>
     const d = await db()
     return await new Promise((res) => {
       const r = d.transaction(STORE).objectStore(STORE).get('board')
-      r.onsuccess = () => res(r.result ?? null)
+      r.onsuccess = () => {
+        const value = r.result
+        res(value && value.at > Number(localStorage.getItem('bd.snapshot.invalid') || 0) ? value : null)
+      }
       r.onerror = () => res(null)
     })
   } catch {

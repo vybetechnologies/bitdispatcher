@@ -13,6 +13,7 @@ import Rms from './rms/Rms'
 import { useViews } from './access'
 import { KeyTestHost } from './keys'
 import { SignOffBlocked } from './SignOff'
+import { WorkspaceShell } from './ModuleSwitcher'
 
 /** A supervisory screen only for people the agency gave it; a direct link shows why not. */
 function Given({ id, children }: { id: string; children: React.ReactNode }) {
@@ -72,6 +73,7 @@ export default function App() {
       <LockGuard />
       {me && <KeyTestHost />}
       {me && <SignOffBlocked />}
+      <WorkspaceShell>
       {me?.role === 'field' ? (
         <Routes>
           <Route path="/rms" element={<Rms />} />
@@ -111,6 +113,7 @@ export default function App() {
       ) : (
         <Login />
       )}
+      </WorkspaceShell>
     </Tooltip.Provider>
   )
 }

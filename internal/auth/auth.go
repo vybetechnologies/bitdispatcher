@@ -77,16 +77,18 @@ type Public struct {
 
 // Session is one signed-in browser.
 type Session struct {
-	MDTUnit  string    `json:"mdtUnit,omitempty"`
-	ID       string    `json:"-"`
-	Hash     string    `json:"hash"` // what the ledger records
-	Username string    `json:"username"`
-	Name     string    `json:"name"`
-	Role     string    `json:"role"`
-	Console  string    `json:"console"`
-	From     string    `json:"from"`
-	Created  time.Time `json:"created"`
-	Last     time.Time `json:"last"`
+	WorkConsole string    `json:"-"`
+	MFAVerified bool      `json:"-"`
+	MDTUnit     string    `json:"mdtUnit,omitempty"`
+	ID          string    `json:"-"`
+	Hash        string    `json:"hash"` // what the ledger records
+	Username    string    `json:"username"`
+	Name        string    `json:"name"`
+	Role        string    `json:"role"`
+	Console     string    `json:"console"`
+	From        string    `json:"from"`
+	Created     time.Time `json:"created"`
+	Last        time.Time `json:"last"`
 	// Training sessions work in the training environment: its own board and ledger, never the live one.
 	Training bool `json:"training,omitempty"`
 	// Exercise is the shared training exercise the session joined (empty: a practice board of its own).
@@ -407,7 +409,7 @@ func (s *Store) open(u *User, console, from string) *Session {
 	id := RandomToken(32)
 	sum := sha256.Sum256([]byte(id))
 	se := &Session{ID: id, Hash: hex.EncodeToString(sum[:8]), Username: u.Username, Name: u.Name, Role: u.Role,
-		Console: strings.TrimSpace(console), From: from, Created: now, Last: now, Active: now, MDTUnit: u.MDTUnit}
+		Console: strings.TrimSpace(console), WorkConsole: strings.TrimSpace(console), From: from, Created: now, Last: now, Active: now, MDTUnit: u.MDTUnit}
 	s.sessions[id] = se
 	return se
 }
@@ -445,6 +447,9 @@ func (s *Store) SetConsole(id, console string) {
 	defer s.mu.Unlock()
 	if se, ok := s.sessions[id]; ok {
 		se.Console = console
+		if se.Role != Field {
+			se.WorkConsole = console
+		}
 	}
 }
 

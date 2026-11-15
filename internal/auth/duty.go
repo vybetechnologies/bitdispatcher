@@ -266,6 +266,7 @@ func (s *Store) SignIn(r Request) (*Session, *Need, error) {
 	u.LastDuty = duty
 	se := s.open(u, r.Console, r.From)
 	se.Duty, se.Role = duty, SessionRole(duty, u.Role)
+	se.MFAVerified = acceptedStep > 0
 	cp := *se
 	return &cp, nil, nil
 }
