@@ -58,3 +58,28 @@ func TestMFACodeSurvivesDutySelection(t *testing.T) {
 		})
 	}
 }
+
+func TestAdministratorCanAlsoWorkFieldDuty(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pw := GeneratePassword()
+	if err = s.Save("chief", "Chief", Admin, pw, false); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.SetDuties("chief", []string{DutyAdmin, DutyField, DutySupervisor, DutyRecords}); err != nil {
+		t.Fatal(err)
+	}
+	if s.UserRole("chief") != Admin {
+		t.Fatal("MDT duty removed administrator access")
+	}
+	se, _, err := s.SignIn(Request{Username: "chief", Password: pw, Duty: DutyField, Console: "SEC1"})
+	if err != nil || se == nil || se.Role != Field {
+		t.Fatal("field session did not receive field-only rights")
+	}
+	se, _, err = s.SignIn(Request{Username: "chief", Password: pw, Duty: DutyAdmin})
+	if err != nil || se == nil || se.Role != Admin {
+		t.Fatal("administrator duty unavailable")
+	}
+}

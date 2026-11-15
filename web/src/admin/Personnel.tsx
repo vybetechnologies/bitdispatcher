@@ -127,7 +127,7 @@ export default function Personnel({ view }: { view: View }) {
         <p className="mt-1 text-sm text-slate-400">
           Applies only to units whose crew is recorded. Edit these in Admin › Settings.
         </p>
-        {roster.capNeeds.length ? (
+        {roster.capNeeds?.length ? (
           <ul className="mt-3 space-y-1 text-sm text-slate-300">
             {roster.capNeeds.map((n, i) => (
               <li key={i}>

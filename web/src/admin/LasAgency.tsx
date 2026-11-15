@@ -38,11 +38,11 @@ export default function LasAgency() {
     <section className="panel space-y-3 rounded-lg p-4 text-sm">
       <h2 className="font-semibold text-slate-50">Apply the private-security starting configuration</h2>
       <p>Replaces the untouched upstream call-type catalog, unit types, mark-outs, qualifications and dispositions with LAS defaults. Sets Central time and disables the government message switch. Map settings, numbering, MFA policy, users, GIS, cameras and history are preserved. No station, officer or available unit is invented.</p>
-      <p>Available only before operational records, units or response plans exist. Custom call types require individual review. Review run cards and staffing before operational use. Take a volume backup first. Each change is recorded through the application ledger; this is not an atomic multi-event transaction, and an interrupted application can be retried.</p>
+      <p>Available before operational records or response plans exist. Existing units are preserved when their types are compatible with LAS. Custom call types require individual review. Review run cards and staffing before operational use. Take a volume backup first. Each change is recorded through the application ledger; this is not an atomic multi-event transaction, and an interrupted application can be retried.</p>
       {error && <p role="alert" className="text-rose-300">{error}</p>}
       {!preview ? <p>Loading configuration preview…</p> : <>
         <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr><th>Code</th><th>Call type</th><th>Priority</th><th>Security units</th></tr></thead><tbody>{preview.callTypes.map(c => <tr key={c.code} className="border-t border-slate-800"><td className="py-2 font-mono">{c.code}</td><td>{c.name}</td><td>P{c.priority}</td><td>{c.runCard?.reduce((n, r) => n + r.count, 0) || 'Chosen by dispatcher'}</td></tr>)}</tbody></table></div>
-        {!preview.unused && <p className="text-amber-300">Operational data already exists. Use individual Settings and Call types changes; bulk application is blocked.</p>}
+        {!preview.unused && <p className="text-amber-300">Operational records or response plans already exist. Use individual configuration changes; bulk application is blocked.</p>}
         <label className="flex items-start gap-2"><input type="checkbox" checked={confirmed} disabled={!preview.unused || busy} onChange={e => setConfirmed(e.target.checked)} />I have reviewed this configuration and backed up the data volume.</label>
         <button className="btn btn-go" disabled={!preview.unused || !confirmed || busy} onClick={apply}>{busy ? 'Applying…' : 'Apply LAS configuration'}</button>
       </>}

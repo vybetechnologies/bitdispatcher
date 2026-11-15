@@ -81,3 +81,29 @@ for government query access. The sign-in page was visually verified with LAS
 branding. The existing authenticator enrollment was preserved. An administrator
 sign-in and the supported LAS configuration application remain pending; deployment
 alone does not replace an existing ledger's catalog. See las-live-login.jpg.
+
+## LAS3 role and setup changes
+
+Compatible existing patrol/site/security-supervisor units may be retained when applying
+LAS defaults before incidents, reports, calls or response plans exist. Unit definitions,
+status, crews and stations are preserved. Unsupported unit types and custom catalogs
+remain blocked. Empty capability arrays are tolerated by Units, Call types, Settings,
+Personnel and the incident unit panel.
+
+LAS administrators may close required checklist steps with a reason. An override is
+attributed in the ordinary setup event, displayed as a warning, and does not alter
+underlying diagnostic details or the go-live test result. This records an owner decision;
+it does not certify training, backups, connectivity or operational readiness.
+
+Management functional-access.md and platform-access-model.ts identify two owners and
+separate CAD/RMS/MDT grants. Native BitDispatcher role presets cover owner/command admin,
+dispatch supervisor, dispatcher, operations supervisor plus MDT, field officer, records
+and observer. They are local duties, not Management synchronization or an implementation
+of its independent property/shift scopes. HR, finance and client permissions remain in
+Management. No non-owner accounts receive new access automatically.
+
+Administrator and field duties may coexist. Each field session gets only field rights;
+an administrator session remains administrative. MDT has a unit selector for authorized
+console roles. Device GPS is shared only after the user chooses Share device GPS.
+Selecting another unit stops GPS sharing. Generated account passwords remain masked
+in the browser for secure owner handoff and are not written to documentation or logs.

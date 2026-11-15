@@ -143,9 +143,6 @@ func (s *Store) SetDuties(username string, duties []string) error {
 	if len(clean) == 0 {
 		return errors.New("choose at least one duty")
 	}
-	if slices.Contains(clean, DutyField) && len(clean) > 1 {
-		return errors.New("a field crew signs in as its unit: give field crews no other duty")
-	}
 	role := RoleForDuties(clean)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -163,6 +160,8 @@ func (s *Store) SetDuties(username string, duties []string) error {
 	for _, se := range s.sessions {
 		if se.Username == u.Username && !slices.Contains(clean, se.Duty) {
 			se.Duty = u.defaultDuty()
+		}
+		if se.Username == u.Username {
 			se.Role = SessionRole(se.Duty, role)
 		}
 	}

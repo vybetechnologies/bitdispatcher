@@ -51,16 +51,21 @@ export default function Mdt() {
   const now = useNow()
   const nav = useNavigate()
   const [crewOpen, setCrewOpen] = useState(false)
-  const unitParam = me?.role === 'field' ? '' : `?unit=${encodeURIComponent(me?.console ?? '')}`
+  const [selectedUnit, setSelectedUnit] = useState(() => localStorage.getItem(`las.mdt.unit.${me?.username}`) ?? '')
+  const [sendGps, setSendGps] = useState(false)
+  const unitParam = me?.role === 'field' ? '' : `?unit=${encodeURIComponent(selectedUnit || me?.console || '')}`
+  const chooseUnit = (id: string) => { setSendGps(false); setM(null); setSelectedUnit(id); localStorage.setItem(`las.mdt.unit.${me?.username}`, id) }
+  const unitPicker = me?.role !== 'field' && <label className="text-sm">MDT unit <select aria-label="MDT unit" className="input ml-2" value={selectedUnit} onChange={e => chooseUnit(e.target.value)}><option value="">Choose a unit</option>{view?.units.map(u => <option key={u.id} value={u.id}>{u.id} · {u.name || u.id}</option>)}</select></label>
   const load = () => api.get<MDTView>('/mdt' + unitParam).then((v) => { setM(v); setErr('') }).catch((e) => setErr(errText(e)))
   // Follow every change the server announces.
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view?.seq])
+  }, [view?.seq, unitParam])
 
   // GPS from the device, at most every 10 seconds; the server keeps a ledger entry every 30 s or 1 km.
   useEffect(() => {
+    if (!sendGps || !m?.unit.id) { setGps('off'); return }
     if (!('geolocation' in navigator)) {
       setGps('none')
       return
@@ -77,7 +82,7 @@ export default function Mdt() {
       { enableHighAccuracy: true, maximumAge: 5000 },
     )
     return () => navigator.geolocation.clearWatch(id)
-  }, [unitParam])
+  }, [unitParam, sendGps, m?.unit.id])
 
   const u = m?.unit
   const inc = m?.incident
@@ -141,7 +146,7 @@ export default function Mdt() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  if (!m) return <div className="grid h-full place-items-center text-sm text-slate-400">{err || 'Starting the terminal…'}</div>
+  if (!m) return <div className="grid h-full place-items-center text-sm text-slate-400"><div className="space-y-4">{unitPicker}<p>{err || 'Starting the terminal…'}</p><Link className="btn" to="/">Return to operations</Link></div></div>
   const next = NEXT[u!.status]
   const notes = (inc?.timeline ?? []).filter((e) => e.kind === 'note' || e.kind === 'priority-note' || e.kind === 'created').slice().reverse()
   return (
@@ -151,14 +156,17 @@ export default function Mdt() {
           TRAINING{me.exercise ? ` · exercise ${me.exercise}` : ''} · nothing here reaches the live board
         </div>
       )}
-      <header className="flex items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 py-2">
+      <header className="flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 py-2">
         <Logo size={22} />
+        {unitPicker}
         <span className="font-mono text-2xl font-black tracking-tight">{u!.id}</span>
         <StatusChip status={u!.status} />
         <span className="text-xs text-slate-400">{u!.covering ? `covering ${u!.covering}` : m.station?.name}</span>
         <span className={cx('chip ml-2', gps === 'on' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')} title="Position from this device">
           <LocateFixed size={12} aria-hidden /> GPS {gps === 'on' ? 'sending' : gps === 'denied' ? 'blocked: allow location' : gps === 'none' ? 'not available' : 'waiting'}
         </span>
+        <button className="btn" onClick={() => setSendGps(v => !v)}>{sendGps ? 'Stop GPS' : 'Share device GPS'}</button>
+        {me?.role !== 'field' && <Link to="/admin" className="btn">Administration</Link>}
         <span className="ml-auto font-mono text-xl tnum">{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
         {inc && <button className="btn h-9" onClick={async () => {
           if (inc.reports?.[0]) return nav(`/rms/${inc.reports[0]}`)

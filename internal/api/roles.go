@@ -59,6 +59,7 @@ func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &b) {
 		return
 	}
+	b.Duty = strings.ToLower(strings.TrimSpace(b.Duty))
 	if s.LAS && (b.Duty == auth.DutyFire || b.Duty == auth.DutyEMS) {
 		fail(w, 403, "choose a Lakes Area Security duty")
 		return
@@ -326,12 +327,15 @@ func (s *Server) workstationRoutes() {
 		if !readJSON(w, r, &b) {
 			return
 		}
+		for i := range b.Duties {
+			b.Duties[i] = strings.ToLower(strings.TrimSpace(b.Duties[i]))
+		}
 		if s.LAS && (slices.Contains(b.Duties, auth.DutyFire) || slices.Contains(b.Duties, auth.DutyEMS)) {
 			fail(w, 422, "fire and EMS duties are unavailable for LAS")
 			return
 		}
 		name := strings.ToLower(r.PathValue("name"))
-		if name == se.Username {
+		if name == se.Username && !(s.LAS && slices.Contains(b.Duties, auth.DutyAdmin)) {
 			fail(w, 422, "you cannot change your own duties: ask another administrator")
 			return
 		}

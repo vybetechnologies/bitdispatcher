@@ -57,3 +57,49 @@ func TestLASBlocksGovernmentRoutesAndLoopback(t *testing.T) {
 		}
 	}
 }
+
+func TestLASChecklistOverrideKeepsDiagnostics(t *testing.T) {
+	ts, s, pw := newServer(t)
+	s.LAS = true
+	admin := login(t, ts, "admin", pw["admin"])
+	if code, _ := admin.do("PUT", "/api/admin/setup/units", map[string]any{"done": true}, true); code != 422 {
+		t.Fatal("reasonless override accepted", code)
+	}
+	if code, _ := admin.do("PUT", "/api/admin/setup/units", map[string]any{"done": true, "note": "Owner-directed checklist closure; configuration review remains open"}, true); code != 200 {
+		t.Fatal(code)
+	}
+	v := s.setupView()
+	found := false
+	for _, x := range v.Steps {
+		if x.ID == "units" {
+			found = true
+			if x.Status != "warn" || x.Tick == nil || x.Tick.By != "admin" {
+				t.Fatal("override not attributed as warning", x)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("units step missing")
+	}
+	if v.GoLive != nil {
+		t.Fatal("override invented a go-live result")
+	}
+}
+
+func TestLASDutyRestrictionsAndSelfAdminPreservation(t *testing.T) {
+	ts, s, pw := newServer(t)
+	s.LAS = true
+	admin := login(t, ts, "admin", pw["admin"])
+	if code, _ := admin.do("PUT", "/api/admin/users/admin/duties", map[string]any{"duties": []string{"admin", "field", "records"}}, true); code != 204 {
+		t.Fatal("combined admin and MDT rejected", code)
+	}
+	if code, _ := admin.do("PUT", "/api/admin/users/admin/duties", map[string]any{"duties": []string{"field"}}, true); code != 422 {
+		t.Fatal("self-admin removal accepted", code)
+	}
+	if code, _ := admin.do("PUT", "/api/admin/users/d1/duties", map[string]any{"duties": []string{" FIRE "}}, true); code != 422 {
+		t.Fatal("case bypass of duty restriction", code)
+	}
+	if code, _ := admin.do("POST", "/api/auth/login", map[string]any{"username": "admin", "password": pw["admin"], "duty": " EMS "}, true); code != 403 {
+		t.Fatal("case bypass of login restriction", code)
+	}
+}

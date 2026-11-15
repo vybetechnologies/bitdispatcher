@@ -1,4 +1,4 @@
-import { SECURITY_DUTIES } from '../brand'
+import { SECURITY_DUTIES, SECURITY_ROLE_PRESETS } from '../brand'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Trash2, UserCog } from 'lucide-react'
@@ -29,7 +29,7 @@ export default function Users() {
   const [items, setItems] = useState<U[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [d, setD] = useState<Draft | null>(null)
-  const [shown, setShown] = useState('')
+  const [shown, setShown] = useState<{ username: string; password: string }[]>([])
   const load = async () => {
     const r = await api.get<{ items: U[]; sessions: Session[] }>('/admin/users')
     setItems(r.items)
@@ -44,8 +44,8 @@ export default function Users() {
       const name = encodeURIComponent(d.username.trim().toLowerCase())
       const role = roleFor(d.duties) || d.role
       const r = await api.put<{ password?: string }>(`/admin/users/${name}`, { name: d.name, role, password: d.password, disabled: d.disabled, demo: d.demo, generate })
-      if (d.username !== me?.username && d.duties.length) await api.put(`/admin/users/${name}/duties`, { duties: d.duties })
-      if (r.password) setShown(`${d.username}: ${r.password}`)
+      if (d.duties.length) await api.put(`/admin/users/${name}/duties`, { duties: d.duties })
+      if (r.password) setShown(previous => [...previous.filter(item => item.username !== d.username), { username: d.username, password: r.password! }])
       toast.success(`${d.username} saved`)
       setD(null)
       load()
@@ -59,10 +59,10 @@ export default function Users() {
       intro="Who can sign in, and the duties each holds. At sign-in a person chooses the duty they are working; what they may do follows it, and the workstation gives the position. Every action is recorded with the person, the duty and the position."
       actions={<button className="btn btn-go" onClick={() => setD({ username: '', name: '', role: 'dispatcher', password: '', disabled: false, demo: false, isNew: true, duties: ['calltaker', 'dispatcher'], mfa: false })}><Plus size={14} aria-hidden /> Add user</button>}
     >
-      {shown && (
+      {shown.length > 0 && (
         <div role="status" className="mb-3 rounded-lg border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200">
-          Give this password to the person now; it is not shown again: <span className="font-mono text-amber-300">{shown}</span>
-          <button className="btn ml-3" onClick={() => setShown('')}>Done</button>
+          Generated passwords. Copy each masked field securely for the named person before closing; it is not shown again: {shown.map(item => <label key={item.username} className="block">{item.username}<input type="password" readOnly aria-label={`Generated password for ${item.username}`} autoComplete="off" className="input font-mono" value={item.password} /></label>)}
+          <button className="btn ml-3" onClick={() => setShown([])}>Done</button>
         </div>
       )}
       <Table head={['Username', 'Name', 'Duties', 'MFA', 'Last sign-in', 'State']}>
@@ -112,16 +112,16 @@ export default function Users() {
           <div className="space-y-3">
             <Field label="Username" htmlFor="un"><input id="un" className="input font-mono" disabled={!d.isNew} value={d.username} onChange={(e) => setD({ ...d, username: e.target.value })} /></Field>
             <Field label="Name" htmlFor="nm"><input id="nm" className="input" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
-            <fieldset disabled={d.username === me?.username}>
-              <legend className="label">Duties (qualifications)</legend>
+            <fieldset>
+              <legend className="label">Duties (qualifications)</legend><label className="label">Role preset<select aria-label="Role preset" className="input mb-2" value="" onChange={e => { const preset = SECURITY_ROLE_PRESETS.find(([name]) => name === e.target.value); if (preset) setD({ ...d, duties: d.username === me?.username ? [...new Set([...preset[1], 'admin'])] : [...preset[1]] }) }}><option value="">Choose a role preset</option>{SECURITY_ROLE_PRESETS.map(([name]) => <option key={name}>{name}</option>)}</select></label>
               <div className="grid grid-cols-2 gap-1">
                 {DUTIES.map(([k, l]) => (
                   <label key={k} className="flex items-center gap-1.5 text-sm text-slate-300">
-                    <input type="checkbox" checked={d.duties.includes(k)} onChange={(e) => setD({ ...d, duties: e.target.checked ? [...d.duties.filter((x) => (k === 'field' ? false : x !== 'field')), k] : d.duties.filter((x) => x !== k) })} /> {l}
+                    <input type="checkbox" checked={d.duties.includes(k)} disabled={d.username === me?.username && k === 'admin'} onChange={(e) => setD({ ...d, duties: e.target.checked ? [...d.duties, k] : d.duties.filter((x) => x !== k) })} /> {l}
                   </label>
                 ))}
               </div>
-              <p className="mt-1 text-xs text-slate-500">{d.username === me?.username ? 'Another administrator changes your own duties.' : `Rights: ${ROLES.find(([v]) => v === (roleFor(d.duties) || d.role))?.[1] ?? '—'}. A supervisor keeps supervisory rights when covering a position; an administrator works as one only when signed in as Administrator.`}</p>
+              <p className="mt-1 text-xs text-slate-500">{d.username === me?.username ? 'Keep Administrator selected to preserve your administrative access. MDT is a separate field duty; it does not remove Administrator.' : `Rights: ${ROLES.find(([v]) => v === (roleFor(d.duties) || d.role))?.[1] ?? '—'}. A supervisor keeps supervisory rights when covering a position; an administrator works as one only when signed in as Administrator.`}</p>
             </fieldset>
             {!d.isNew && (
               <div className="flex items-center gap-2 text-sm text-slate-300">

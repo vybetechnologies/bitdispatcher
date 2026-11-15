@@ -58,7 +58,7 @@ export default function Units({ view }: { view: View }) {
             <td className="px-3 py-1.5 font-mono font-bold text-slate-100">{u.id}{u.name && <span className="ml-2 font-sans text-xs font-normal text-slate-400">{u.name}</span>}</td>
             <td className="px-3 text-slate-300">{typeOf(u.type)?.name ?? u.type}</td>
             <td className="px-3 text-slate-300">{view.stations.find((s) => s.id === u.station)?.name ?? <span className="text-amber-300">none</span>}</td>
-            <td className="px-3 text-xs text-slate-400">{u.caps.join(', ')}</td>
+            <td className="px-3 text-xs text-slate-400">{(u.caps ?? []).join(', ')}</td>
             <td className="px-3 font-mono text-xs text-slate-400">{u.radioId || ''}{u.radioAlias ? ` ${u.radioAlias}` : ''}</td>
             <td className="px-3"><StatusChip status={u.status} /></td>
           </tr>
@@ -86,7 +86,7 @@ export default function Units({ view }: { view: View }) {
             <Field label="Name" htmlFor="uname" hint="Optional, such as Medic 1 or a crew name">
               <input id="uname" className="input" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} />
             </Field>
-            <Field label="Type" htmlFor="utype" error={err?.field === 'type' ? err.message : undefined} hint={typeOf(d.type)?.capabilities.join(', ')}>
+            <Field label="Type" htmlFor="utype" error={err?.field === 'type' ? err.message : undefined} hint={typeOf(d.type)?.capabilities?.join(', ')}>
               <select id="utype" className="input" value={d.type} onChange={(e) => setD({ ...d, type: e.target.value })}>
                 {view.settings.unitTypes.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
               </select>

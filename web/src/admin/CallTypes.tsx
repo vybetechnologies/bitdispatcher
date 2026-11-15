@@ -42,7 +42,7 @@ export default function CallTypes({ view }: { view: View }) {
       setErr(e instanceof ApiError ? e : new ApiError(0, errText(e)))
     }
   }
-  const avail = (cap: string) => view.units.filter((u) => u.caps.includes(cap)).length
+  const avail = (cap: string) => view.units.filter((u) => (u.caps ?? []).includes(cap)).length
   return (
     <Page
       title="Call types and run cards"

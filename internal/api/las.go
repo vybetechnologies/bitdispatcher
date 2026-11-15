@@ -24,7 +24,7 @@ func (s *Server) lasRoutes() {
 		var unused bool
 		s.Eng.Read(func(st *cad.State) {
 			seq = st.Seq
-			unused = len(st.Incidents) == 0 && len(st.Reports) == 0 && len(st.Units) == 0 && len(st.Calls) == 0 && len(st.Plans) == 0
+			unused = len(st.Incidents) == 0 && len(st.Reports) == 0 && len(st.Calls) == 0 && len(st.Plans) == 0
 		})
 		writeJSON(w, 200, map[string]any{"seq": seq, "unused": unused, "callTypes": cad.LASCallTypes(), "settings": cad.LASSettings()})
 	})

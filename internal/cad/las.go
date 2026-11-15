@@ -88,8 +88,20 @@ func (e *Engine) ConfigureLAS(a Actor, expected uint64) error {
 	if e.st.Seq != expected {
 		return problem("seq", "the system changed: reload the preview before applying")
 	}
-	if len(e.st.Incidents) > 0 || len(e.st.Reports) > 0 || len(e.st.Units) > 0 || len(e.st.Calls) > 0 || len(e.st.Plans) > 0 {
+	if len(e.st.Incidents) > 0 || len(e.st.Reports) > 0 || len(e.st.Calls) > 0 || len(e.st.Plans) > 0 {
 		return problem("profile", "this system has operational records, units or response plans: review individual configuration changes instead")
+	}
+	// Configured units are preserved when their existing types remain valid under LAS.
+	for _, u := range e.st.Units {
+		compatible := false
+		for _, typ := range LASSettings().UnitTypes {
+			if u.Type == typ.Code {
+				compatible = true
+			}
+		}
+		if !compatible {
+			return problem("units", "unit %s has type %s: review its type before applying LAS defaults", u.ID, u.Type)
+		}
 	}
 	known := map[string][]CallType{}
 	for _, c := range append(DefaultCallTypes(), LASCallTypes()...) {

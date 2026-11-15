@@ -602,6 +602,11 @@ func (s *Server) loginDemo(w http.ResponseWriter, r *http.Request) {
 	if console == "" || len(console) > 24 {
 		console = "WEB-" + strings.ToUpper(auth.RandomToken(3))[:4]
 	}
+	b.Duty = strings.ToLower(strings.TrimSpace(b.Duty))
+	if s.LAS && (b.Duty == auth.DutyFire || b.Duty == auth.DutyEMS) {
+		fail(w, 403, "choose a Lakes Area Security duty")
+		return
+	}
 	se, err := s.Auth.LoginDemo(console, clientIP(r), b.Duty)
 	if err != nil {
 		fail(w, http.StatusNotFound, err.Error())

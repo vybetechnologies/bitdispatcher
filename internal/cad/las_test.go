@@ -124,3 +124,37 @@ func TestLASFreshDefaultsDoNotMigrateExistingLedger(t *testing.T) {
 		}
 	})
 }
+
+func TestLASPreservesCompatibleUnitsAndRejectsIncompatibleTypes(t *testing.T) {
+	for _, typ := range []string{"patrol", "engine"} {
+		t.Run(typ, func(t *testing.T) {
+			e, err := Open(filepath.Join(t.TempDir(), "ledger.jsonl"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer e.Close()
+			a := Actor{User: "owner", Role: "admin"}
+			if err = e.SaveUnit(a, UnitDef{ID: "SEC1", Name: "Existing unit", Type: typ}); err != nil {
+				t.Fatal(err)
+			}
+			var before Unit
+			var seq uint64
+			e.Read(func(st *State) { before = *st.Units["SEC1"]; seq = st.Seq })
+			err = e.ConfigureLAS(a, seq)
+			if typ == "patrol" && err != nil {
+				t.Fatal(err)
+			}
+			if typ == "engine" && err == nil {
+				t.Fatal("incompatible unit accepted")
+			}
+			e.Read(func(st *State) {
+				if !reflect.DeepEqual(before, *st.Units["SEC1"]) {
+					t.Error("existing unit changed")
+				}
+				if typ == "engine" && st.Seq != seq {
+					t.Error("refusal changed ledger")
+				}
+			})
+		})
+	}
+}

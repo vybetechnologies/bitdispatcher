@@ -275,7 +275,7 @@ export default function SettingsPage({ view }: { view: View }) {
                       {['police', 'other'].map((x) => <option key={x}>{x}</option>)}
                     </select>
                   </td>
-                  <td className="pr-2"><input aria-label="Capabilities" className="input font-mono" value={t.capabilities.join(', ')} onChange={(e) => upType(i, { capabilities: e.target.value.split(/[,\s]+/).filter(Boolean) })} /></td>
+                  <td className="pr-2"><input aria-label="Capabilities" className="input font-mono" value={(t.capabilities ?? []).join(', ')} onChange={(e) => upType(i, { capabilities: e.target.value.split(/[,\s]+/).filter(Boolean) })} /></td>
                   <td className="pr-2 text-center"><input type="checkbox" aria-label={`Keep ${t.name} covered`} checked={t.cover ?? COVER.includes(t.code)} onChange={(e) => upType(i, { cover: e.target.checked })} /></td>
                   <td className="pr-2"><input type="number" min={0} max={12} aria-label={`${t.name} minimum aboard`} className="input w-20 font-mono" value={t.minStaff ?? 0} onChange={(e) => upType(i, { minStaff: Number(e.target.value) || undefined })} /></td>
                   <td className="pr-2"><input aria-label={`${t.name} required positions`} className="input font-mono" value={(t.positions ?? []).join(', ')} onChange={(e) => upType(i, { positions: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} /></td>

@@ -30,7 +30,7 @@ export default function Setup() {
   }
   const pct = Math.round((100 * v.done) / Math.max(1, v.steps.length))
   return (
-    <Page title="Setup checklist" intro="Everything to do before the first live call, in order. bitdispatcher checks most steps itself as you work; training, backups and running beside the old system only you can confirm. Every step links to the page that does it and to its chapter of the manual.">
+    <Page title="Setup checklist" intro="Setup checks reflect current configuration. Administrators can close outstanding steps with an attributed reason. Closing a step does not change diagnostic results, add staff, connect services or certify operational readiness.">
       <section className="panel mb-4 rounded-lg p-4 text-sm" aria-label="Progress">
         <div className="flex items-center gap-3">
           <div className="h-2 flex-1 overflow-hidden rounded bg-slate-800" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Steps done">
@@ -39,7 +39,7 @@ export default function Setup() {
           <span className="text-slate-300">{v.done} of {v.steps.length} done</span>
         </div>
         <p className="mt-2 text-xs text-slate-400" data-testid="setup-left">
-          {v.left === 0 ? 'Every required step is done.' : `${v.left} required ${v.left === 1 ? 'step is' : 'steps are'} not done yet.`} When they are, run the <Link className="text-sky-300 underline" to="/admin/golive">go-live check</Link>.
+          {v.left === 0 ? 'Every required step is complete or closed by an administrator.' : `${v.left} required ${v.left === 1 ? 'step is' : 'steps are'} not done yet.`} When they are, run the <Link className="text-sky-300 underline" to="/admin/golive">go-live check</Link>.
         </p>
       </section>
       <ol className="space-y-2">
@@ -57,12 +57,12 @@ export default function Setup() {
                 </div>
                 <p className="mt-0.5 text-xs text-slate-400">{x.why}</p>
                 {x.detail && <p className="mt-1 text-xs text-slate-300">{x.detail}</p>}
-                {x.tick && <p className="mt-1 text-xs text-emerald-300">{x.manual ? 'Confirmed' : 'Not needed'} by {x.tick.by}{x.tick.at ? ' on ' + new Date(x.tick.at).toLocaleDateString() : ''}{x.tick.note ? ': ' + x.tick.note : ''}</p>}
+                {x.tick && <p className="mt-1 text-xs text-emerald-300">{x.override && !x.manual && x.need === 'required' ? 'Closed by administrator override' : x.manual ? 'Confirmed' : 'Not needed'} by {x.tick.by}{x.tick.at ? ' on ' + new Date(x.tick.at).toLocaleDateString() : ''}{x.tick.note ? ': ' + x.tick.note : ''}</p>}
                 {asking === x.id && (
                   <div className="mt-2 flex gap-2">
                     <input className="input h-7 flex-1 text-xs" autoFocus value={note[x.id] ?? ''} onChange={(e) => setNote({ ...note, [x.id]: e.target.value })}
-                      placeholder={x.manual ? 'A note (optional): who was trained, where the copies go…' : 'Why it is not needed here'} aria-label="Note" />
-                    <button className="btn btn-go h-7 py-0 text-xs" onClick={() => tick(x.id, true)}>{x.manual ? 'Confirm' : 'Not needed'}</button>
+                      placeholder={x.manual ? 'A note (optional): who was trained, where the copies go…' : 'Reason for closing this step; automatic results remain visible'} aria-label="Note" />
+                    <button className="btn btn-go h-7 py-0 text-xs" onClick={() => tick(x.id, true)}>{x.override && !x.manual && x.need === 'required' ? 'Record override' : x.manual ? 'Confirm' : 'Not needed'}</button>
                     <button className="btn h-7 py-0 text-xs" onClick={() => setAsking(null)}>Cancel</button>
                   </div>
                 )}
@@ -72,8 +72,8 @@ export default function Setup() {
                 {x.chapter && <Link className="btn h-7 px-2 py-0 text-xs" to={'/help?a=' + x.chapter} aria-label={'Manual: ' + x.title} title="The manual"><CircleHelp size={12} className="text-sky-300" aria-hidden /></Link>}
                 {x.tick ? (
                   <button className="btn h-7 py-0 text-xs" onClick={() => tick(x.id, false)} aria-label={'Undo: ' + x.title}><Undo2 size={12} aria-hidden /> Undo</button>
-                ) : x.status === 'todo' && (x.manual || x.need !== 'required') && asking !== x.id && (
-                  <button className="btn h-7 py-0 text-xs" onClick={() => setAsking(x.id)}>{x.manual ? 'Mark done' : 'Not needed'}</button>
+                ) : x.status === 'todo' && (x.manual || x.need !== 'required' || x.override) && asking !== x.id && (
+                  <button className="btn h-7 py-0 text-xs" onClick={() => setAsking(x.id)}>{x.override && !x.manual && x.need === 'required' ? 'Close with reason' : x.manual ? 'Mark done' : 'Not needed'}</button>
                 )}
               </div>
             </div>

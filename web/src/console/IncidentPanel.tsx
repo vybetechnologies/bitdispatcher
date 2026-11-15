@@ -663,7 +663,7 @@ export function UnitDetail({ view, id }: { view: View; id: string }) {
           {u.position ? `${ago(u.position.at, now)} ago · ${u.position.source}${u.position.speed ? ` · ${Math.round(u.position.speed)} km/h` : ''}` : 'no position'}
         </span>
         <span className="text-slate-500">Radio</span><span className="text-slate-200">{u.radioId ? `ID ${u.radioId}` : 'not mapped'}{u.radioAlias ? ` · ${u.radioAlias}` : ''}{u.lastHeard ? ` · heard ${ago(u.lastHeard, now)} ago` : ''}</span>
-        <span className="text-slate-500">Can do</span><span className="text-slate-300">{u.caps.join(', ')}</span>
+        <span className="text-slate-500">Can do</span><span className="text-slate-300">{(u.caps ?? []).join(', ')}</span>
         <CrewLine view={view} unitId={u.id} />
       </div>
       {can.dispatch(me) && (

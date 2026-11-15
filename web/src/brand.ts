@@ -11,3 +11,14 @@ export const SECURITY_DUTIES: [string, string][] = [
 ]
 export const disciplineLabel = (key: string) => SECURITY_DISCIPLINES.find(d => d.value === key)?.label ?? `${key} (historical)`
 export const UNAVAILABLE_ADMIN = new Set(['agencies', 'facilities', 'publicalerts', 'pip'])
+
+// Native BitDispatcher duty templates; Management grants remain independent.
+export const SECURITY_ROLE_PRESETS: [string, string[]][] = [
+  ['Owner / command administrator', ['admin', 'supervisor', 'dispatcher', 'calltaker', 'police', 'records', 'field']],
+  ['Dispatch supervisor', ['supervisor', 'dispatcher', 'calltaker', 'police']],
+  ['Dispatcher', ['dispatcher', 'calltaker', 'police']],
+  ['Operations supervisor + MDT', ['supervisor', 'dispatcher', 'records', 'field']],
+  ['Security officer / MDT', ['field']],
+  ['Records staff', ['records']],
+  ['Read-only observer', ['viewer']],
+]

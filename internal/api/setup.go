@@ -31,16 +31,17 @@ import (
 
 // SetupStep is one step of the setup checklist.
 type SetupStep struct {
-	ID      string         `json:"id"`
-	Title   string         `json:"title"`
-	Why     string         `json:"why"`
-	Need    string         `json:"need"`   // required, recommended, optional
-	Status  string         `json:"status"` // done, todo, warn (done, with something to look at)
-	Detail  string         `json:"detail,omitempty"`
-	Page    string         `json:"page,omitempty"`    // the admin page that does it
-	Chapter string         `json:"chapter,omitempty"` // the manual chapter about it
-	Manual  bool           `json:"manual,omitempty"`  // only a person can say it is done
-	Tick    *cad.SetupTick `json:"tick,omitempty"`    // a person confirmed it, or said it is not needed
+	ID       string         `json:"id"`
+	Title    string         `json:"title"`
+	Why      string         `json:"why"`
+	Need     string         `json:"need"`   // required, recommended, optional
+	Status   string         `json:"status"` // done, todo, warn (done, with something to look at)
+	Detail   string         `json:"detail,omitempty"`
+	Page     string         `json:"page,omitempty"`     // the admin page that does it
+	Chapter  string         `json:"chapter,omitempty"`  // the manual chapter about it
+	Manual   bool           `json:"manual,omitempty"`   // only a person can say it is done
+	Override bool           `json:"override,omitempty"` // LAS administrators may close a step with an attributed reason
+	Tick     *cad.SetupTick `json:"tick,omitempty"`     // a person confirmed it, or said it is not needed
 }
 
 // SetupView is the checklist.
@@ -80,7 +81,7 @@ func (s *Server) setupRoutes() {
 		case st == nil:
 			fail(w, 404, "no such step")
 			return
-		case b.Done && !st.Manual && st.Need == "required":
+		case b.Done && !st.Manual && st.Need == "required" && !s.LAS:
 			fail(w, 422, "bitdispatcher checks this step itself: "+st.Title+" is done when it is")
 			return
 		case b.Done && !st.Manual && strings.TrimSpace(b.Note) == "":
@@ -371,6 +372,7 @@ func (s *Server) setupView() SetupView {
 	if s.LAS {
 		steps = slices.DeleteFunc(steps, func(x SetupStep) bool { return x.ID == "ncic" })
 		for i := range steps {
+			steps[i].Override = true
 			switch steps[i].ID {
 			case "agency":
 				steps[i].Title = "Confirm Lakes Area Security and incident numbering"
@@ -391,8 +393,11 @@ func (s *Server) setupView() SetupView {
 	}
 	for i := range v.Steps {
 		x := &v.Steps[i]
-		if t, ok := ticks[x.ID]; ok && x.Status == "todo" && (x.Manual || x.Need != "required") {
+		if t, ok := ticks[x.ID]; ok && x.Status == "todo" && (x.Manual || x.Need != "required" || s.LAS) {
 			x.Tick, x.Status = &t, "done"
+			if s.LAS && !x.Manual && x.Need == "required" {
+				x.Status = "warn"
+			}
 		}
 		if x.Status != "todo" {
 			v.Done++
