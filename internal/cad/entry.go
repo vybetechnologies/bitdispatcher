@@ -99,8 +99,9 @@ type Security struct {
 
 // Person is someone on an incident: the caller, a victim, a suspect, a witness.
 type Person struct {
-	ID   string `json:"id"`
-	Role string `json:"role"` // caller, victim, suspect, witness, complainant, subject, patient, other
+	RecordID string `json:"recordId,omitempty"`
+	ID       string `json:"id"`
+	Role     string `json:"role"` // caller, victim, suspect, witness, complainant, subject, patient, other
 	// Roles are every role the person has on the incident (Role is the first).
 	Roles []string `json:"roles,omitempty"`
 	// Name is "LAST, FIRST MIDDLE SUFFIX", made from the separate parts when they are given.
@@ -589,12 +590,25 @@ func (e *Engine) SavePerson(a Actor, number string, p Person) (string, error) {
 			return "", problem("person", "no person %s on %s", p.ID, number)
 		}
 		p.Added, p.AddedBy, p.Updated = in.Persons[i].Added, in.Persons[i].AddedBy, now
+		if p.RecordID == "" {
+			p.RecordID = in.Persons[i].RecordID
+		}
 		p.Returns = in.Persons[i].Returns // returns are attached by inquiries, never by the form
 		if o := in.Persons[i].SafetyNote; o != nil && p.SafetyNote != nil && p.SafetyNote.Flag == "" {
 			p.SafetyNote.Flag = o.Flag
 		}
 	}
 	p.Aliases = cleanList(p.Aliases)
+	if e.st.lasPeople && !p.Removed {
+		if p.RecordID == "" {
+			p.RecordID = lasIncidentPersonID(number, p.ID)
+		} else if _, ok := e.st.LASRecords[p.RecordID]; !ok && p.RecordID != lasIncidentPersonID(number, p.ID) {
+			return "", problem("recordId", "no such person record")
+		}
+		if r, ok := e.st.LASRecords[p.RecordID]; ok && (r.Kind != "person" || (r.Agency != "" && r.Agency != in.Agency)) {
+			return "", problem("recordId", "person record belongs to another agency")
+		}
+	}
 	e.proposePersonFlag(a, number, &p)
 	_, err := e.write(a, EvIncPerson, refs{Incident: number}, personData{Person: p})
 	return p.ID, err
@@ -1067,6 +1081,9 @@ func (s *State) applyEntry(e ledger.Event) (bool, error) {
 				in.add(e, "safety", fmt.Sprintf("OFFICER SAFETY (%s): %s. %s. Source: %s. Responders: %s", scope, n.Title, n.Reason, n.Source, n.Instruction))
 			}
 			s.noteFlagsShown(e, in)
+			if s.lasPeople {
+				s.syncLASPerson(in, p, e.At, e.Actor)
+			}
 		}
 	case EvIncVehicle:
 		v, err := decode[vehicleData](e)

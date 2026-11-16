@@ -3,8 +3,9 @@ import { Car, Search, ShieldAlert, UserRound } from 'lucide-react'
 import { api, errText } from '../api'
 import { Modal } from '../ui'
 import { cx } from '../util'
+import type { Person } from '../requests/types'
 
-type Hit = { source?:string; record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
+type Hit = { flags?:{id:string;title:string;warning:string;instruction:string}[];person?:Person;incidents?:{incident:string;role:string}[];source?:string; record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
 type Results = { kind:'person'|'vehicle'; items:Hit[]; more:boolean; source:string; searchedAt:string }
 
 /** Private local-record lookup, kept inside MDT so it never changes the user's duty or assigned unit. */
@@ -66,10 +67,17 @@ export default function RecordSearch({onClose}:{onClose:()=>void}) {
      <div className="flex flex-wrap items-start gap-2"><h3 className="flex-1 text-base font-semibold text-slate-100">{result.kind==='person'?hit.name:[hit.plate||'No plate recorded',hit.state].filter(Boolean).join(' · ')}</h3><span className="chip border border-slate-600 text-xs text-slate-300">Local record · possible match</span></div>
      {result.kind==='person'?<><p className="mt-1 text-sm text-slate-300">DOB {hit.dob||'not recorded'}{hit.sex?` · Sex ${hit.sex}`:''}</p>{hit.description&&<p className="mt-1 text-sm text-slate-400">{hit.description}</p>}</>:<><p className="mt-1 text-sm text-slate-300">{[hit.color,hit.year,hit.make,hit.model,hit.body].filter(Boolean).join(' · ')||'Description not recorded'}</p><p className="mt-1 font-mono text-sm text-slate-400">VIN {hit.vin||'not recorded'}</p></>}
      {result.kind==='vehicle'&&hit.description&&<p className="mt-1 text-sm text-slate-400">{hit.description}</p>}
+     {hit.person&&<PersonDetails person={hit.person}/>}
+     {hit.flags?.map(f=><div key={f.id} role="alert" className="mt-2 rounded border border-rose-700 bg-rose-950/40 p-2 text-sm text-rose-100"><b>Officer safety · {f.title}</b><p>{f.warning}</p><p>{f.instruction}</p><span className="font-mono text-xs">{f.id}</span></div>)}
+     {!!hit.incidents?.length&&<p className="mt-2 text-xs text-amber-200">Connected incidents: {hit.incidents.map(r=>`${r.incident} (${r.role})`).join(' · ')}</p>}
      {hit.safetyConcern&&<p className="mt-2 flex items-center gap-2 rounded border border-amber-700 bg-amber-950/40 p-2 text-sm text-amber-200"><ShieldAlert size={16} aria-hidden />Recorded safety concern. Confirm current details with dispatch.</p>}
      <p className="mt-2 text-xs text-slate-500">{hit.source || 'LAS incident'} <span className="font-mono text-slate-300">{hit.incident || hit.record}</span> · recorded {new Date(hit.seen).toLocaleDateString()}</p>
     </article>)}
    </section>}
   </div>
  </Modal>
+}
+function PersonDetails({person:p}:{person:Person}){
+ const fields:[string,string|undefined][]=[['SSN',p.ssn],['Licence',p.dl],['Licence state',p.dlState],['Other ID type',p.idType],['Other ID number',p.idNumber],['Other ID state',p.idState],['Address',p.address],['Building',p.building],['Floor',p.floor],['Unit',p.unit],['Phone',p.phone],['Approximate age',p.approxAge],['Race',p.race],['Ethnicity',p.ethnicity],['Height',p.height],['Weight',p.weight],['Build',p.build],['Hair',p.hair],['Eyes',p.eyes],['Clothing',p.clothing],['Scars, marks and tattoos',p.smt],['Aliases',p.aliases?.join(', ')],['Notes',p.notes]]
+ return <details className="mt-2 rounded border border-slate-700 p-2 text-sm"><summary className="cursor-pointer font-semibold text-amber-200">Full person information</summary><dl className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">{fields.filter(([,v])=>v).map(([k,v])=><div key={k}><dt className="text-xs text-slate-500">{k}</dt><dd className="whitespace-pre-wrap text-slate-100">{v}</dd></div>)}</dl>{p.phones?.map((ph,i)=><p key={i}>{ph.type||'Phone'}: {ph.number}{ph.ext?` ext ${ph.ext}`:''} · {ph.source}{ph.verified?' · verified':''}</p>)}{p.safetyNote&&<section className="mt-2 rounded border border-rose-700 bg-rose-950/30 p-2"><b>{p.safetyNote.title}</b><p>{p.safetyNote.reason}</p><p>{p.safetyNote.weapons}</p><p>{p.safetyNote.instruction}</p><p className="text-xs text-slate-400">{p.safetyNote.source} · {p.safetyNote.reliability} · {p.safetyNote.scope}{p.safetyNote.flag?` · Flag ${p.safetyNote.flag}`:''}</p></section>}</details>
 }

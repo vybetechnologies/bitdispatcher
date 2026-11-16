@@ -68,6 +68,7 @@ export type Incident = { files?: IncidentFile[]; droneClips?: DroneClip[]; proto
 }
 
 export type Person = {
+	 recordId?: string
   id: string; role: string; name?: string; aliases?: string[]; dob?: string; sex?: string; race?: string; height?: string; weight?: string; hair?: string; eyes?: string
   clothing?: string; address?: string; phone?: string; idType?: string; idNumber?: string; idState?: string; notes?: string; safety?: boolean
   added?: string; addedBy?: string; updated?: string; removed?: boolean

@@ -540,7 +540,11 @@ func (s *State) IncidentFlags(in *Incident, now time.Time) []*Flag {
 		if p.Removed {
 			continue
 		}
-		for _, f := range s.FlagsForPerson(PersonKey(p), now) {
+		fs := s.FlagsForPerson(PersonKey(p), now)
+		if s.lasPeople {
+			fs = s.LASPersonFlags(p.RecordID, p, now)
+		}
+		for _, f := range fs {
 			if !slices.Contains(out, f) {
 				out = append(out, f)
 			}

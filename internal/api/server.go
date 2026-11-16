@@ -120,6 +120,9 @@ const csrfHeader = "X-BitDispatcher"
 
 // New builds the server and starts the configured integrations.
 func New(s *Server) (*Server, error) {
+	if s.LAS && s.Eng != nil {
+		s.Eng.EnableLASPeople()
+	}
 	s.mux = http.NewServeMux()
 	s.started = time.Now()
 	if s.Views == nil {
@@ -798,7 +801,7 @@ func (s *Server) viewFor(sc cad.Scope) ([]byte, error) {
 		sort.Slice(v.CallTypes, func(i, j int) bool { return v.CallTypes[i].Name < v.CallTypes[j].Name })
 		for _, in := range st.Incidents {
 			if (in.Status != cad.Closed || now.Sub(in.Closed) < 12*time.Hour) && st.IncidentIn(sc, in) {
-				v.Incidents = append(v.Incidents, maskIncident(in))
+				v.Incidents = append(v.Incidents, s.incidentView(in))
 			}
 		}
 		sort.Slice(v.Incidents, func(i, j int) bool { return v.Incidents[i].Number > v.Incidents[j].Number })

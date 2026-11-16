@@ -18,6 +18,16 @@ import (
 
 func validateLASRecord(r *cad.LASRecord, importing bool) error {
 	r.Kind = strings.ToLower(strings.TrimSpace(r.Kind))
+	if r.Person != nil {
+		if r.Kind != "person" {
+			return fmt.Errorf("only person records have person details")
+		}
+		if err := cad.NormalizeLASPerson(r.Person); err != nil {
+			return err
+		}
+		r.Name, r.Aliases, r.DOB, r.Sex, r.Safety = r.Person.Name, r.Person.Aliases, r.Person.DOB, r.Person.Sex, r.Person.Safety
+	}
+	r.Kind = strings.ToLower(strings.TrimSpace(r.Kind))
 	if r.Kind != "person" && r.Kind != "vehicle" {
 		return fmt.Errorf("kind must be person or vehicle")
 	}
@@ -47,7 +57,7 @@ func validateLASRecord(r *cad.LASRecord, importing bool) error {
 		return fmt.Errorf("imports create active records; do not include id, version or archived")
 	}
 	if r.Kind == "person" {
-		if len([]rune(lookupName(r.Name))) < 2 {
+		if len([]rune(lookupName(r.Name))) < 2 && (r.Person == nil || (r.Person.Name == "" && r.Person.Clothing == "" && r.Person.Notes == "")) {
 			return fmt.Errorf("person name needs at least two characters")
 		}
 		if r.DOB != "" {
@@ -102,7 +112,8 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 			return nil, fmt.Errorf("CSV header is missing")
 		}
 		allowed := map[string]bool{}
-		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted", ",") {
+		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,safety,safetyNote"
+		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,"+personFields, ",") {
 			allowed[h] = true
 		}
 		seen := map[string]bool{}
@@ -131,9 +142,15 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 				if v == "" {
 					continue
 				}
-				if h == "aliases" {
+				if h == "phones" || h == "safetyNote" {
+					var nested any
+					if err := json.Unmarshal([]byte(v), &nested); err != nil {
+						return nil, fmt.Errorf("CSV row %d: %s must be JSON", row, h)
+					}
+					obj[h] = nested
+				} else if h == "aliases" || h == "roles" {
 					obj[h] = strings.Split(v, "|")
-				} else if h == "safetyConcern" || h == "restricted" {
+				} else if h == "safetyConcern" || h == "restricted" || h == "safety" {
 					b, e := strconv.ParseBool(v)
 					if e != nil {
 						return nil, fmt.Errorf("CSV row %d: %s must be true or false", row, h)
@@ -147,6 +164,22 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 			var r cad.LASRecord
 			if err := json.Unmarshal(b, &r); err != nil {
 				return nil, err
+			}
+			if strings.EqualFold(r.Kind, "person") {
+				full := false
+				for _, k := range strings.Split(personFields, ",") {
+					if obj[k] != nil {
+						full = true
+					}
+				}
+				if full {
+					var p cad.Person
+					if err := json.Unmarshal(b, &p); err != nil {
+						return nil, fmt.Errorf("CSV row %d: %v", row, err)
+					}
+					p.Safety = p.Safety || r.Safety
+					r.Person = &p
+				}
 			}
 			records = append(records, r)
 			if len(records) > 500 {
@@ -167,12 +200,62 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 	return records, nil
 }
 func (s *Server) lasRecordRoutes() {
+	s.handle("POST /api/persons/records/search", auth.Dispatcher, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
+		var b struct {
+			Query string `json:"query"`
+		}
+		if !readJSON(w, r, &b) {
+			return
+		}
+		q := lookupName(b.Query)
+		if len(q) < 2 || len(q) > 150 {
+			fail(w, 422, "enter at least two characters of a name or record ID")
+			return
+		}
+		items := []cad.LASRecord{}
+		s.Eng.Read(func(st *cad.State) {
+			sc := st.AccessScope(se.Username, se.Console, se.Duty)
+			for _, v := range st.LASRecords {
+				if v.Kind != "person" || v.Archived || (se.Role != auth.Admin && sc != nil && v.Agency != "" && !sc[v.Agency]) {
+					continue
+				}
+				p := cad.LASRecordPerson(v)
+				if !strings.Contains(lookupName(v.ID), q) && !lookupNameMatches(q, p) {
+					continue
+				}
+				v.Person = &p
+				for _, f := range st.LASPersonFlags(v.ID, p, s.Eng.Now()) {
+					v.Flags = append(v.Flags, st.FlagFor(f, cad.DutyOf(a), a.Role))
+				}
+				for _, ref := range st.LASPersonRefs(v.ID) {
+					if in := st.Incidents[ref.Incident]; in != nil && (se.Role == auth.Admin || st.IncidentIn(sc, in)) {
+						v.Incidents = append(v.Incidents, ref)
+					}
+				}
+				items = append(items, v)
+			}
+		})
+		sort.Slice(items, func(i, j int) bool { return items[i].Updated.After(items[j].Updated) })
+		if len(items) > 25 {
+			items = items[:25]
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		writeJSON(w, 200, map[string]any{"items": items})
+	})
 	s.handle("GET /api/admin/las-records", auth.Admin, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
 		items := []cad.LASRecord{}
 		q := lookupName(r.URL.Query().Get("q"))
 		kind := r.URL.Query().Get("kind")
 		s.Eng.Read(func(st *cad.State) {
 			for _, v := range st.LASRecords {
+				if v.Kind == "person" {
+					v.Incidents = st.LASPersonRefs(v.ID)
+					p := cad.LASRecordPerson(v)
+					v.Person = &p
+					for _, f := range st.LASPersonFlags(v.ID, p, s.Eng.Now()) {
+						v.Flags = append(v.Flags, st.FlagFor(f, cad.DutyOf(a), a.Role))
+					}
+				}
 				if kind != "" && v.Kind != kind {
 					continue
 				}

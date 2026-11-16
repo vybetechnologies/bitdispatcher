@@ -26,23 +26,26 @@ type mdtLookupQuery struct {
 	Purpose string `json:"purpose"`
 }
 type mdtLookupHit struct {
-	Source      string    `json:"source,omitempty"`
-	Record      string    `json:"record"`
-	Incident    string    `json:"incident"`
-	Seen        time.Time `json:"seen"`
-	Name        string    `json:"name,omitempty"`
-	DOB         string    `json:"dob,omitempty"`
-	Sex         string    `json:"sex,omitempty"`
-	Description string    `json:"description,omitempty"`
-	Safety      bool      `json:"safetyConcern,omitempty"`
-	Plate       string    `json:"plate,omitempty"`
-	State       string    `json:"state,omitempty"`
-	VIN         string    `json:"vin,omitempty"`
-	Year        string    `json:"year,omitempty"`
-	Make        string    `json:"make,omitempty"`
-	Model       string    `json:"model,omitempty"`
-	Color       string    `json:"color,omitempty"`
-	Body        string    `json:"body,omitempty"`
+	Flags       []*cad.Flag     `json:"flags,omitempty"`
+	Person      *cad.Person     `json:"person,omitempty"`
+	Incidents   []cad.PersonRef `json:"incidents,omitempty"`
+	Source      string          `json:"source,omitempty"`
+	Record      string          `json:"record"`
+	Incident    string          `json:"incident"`
+	Seen        time.Time       `json:"seen"`
+	Name        string          `json:"name,omitempty"`
+	DOB         string          `json:"dob,omitempty"`
+	Sex         string          `json:"sex,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Safety      bool            `json:"safetyConcern,omitempty"`
+	Plate       string          `json:"plate,omitempty"`
+	State       string          `json:"state,omitempty"`
+	VIN         string          `json:"vin,omitempty"`
+	Year        string          `json:"year,omitempty"`
+	Make        string          `json:"make,omitempty"`
+	Model       string          `json:"model,omitempty"`
+	Color       string          `json:"color,omitempty"`
+	Body        string          `json:"body,omitempty"`
 }
 
 func lookupID(value string) string {
@@ -161,6 +164,11 @@ func (s *Server) mdtLookupRoutes() {
 				}
 				if q.Kind == "person" {
 					for _, p := range in.Persons {
+						if p.RecordID != "" {
+							if _, ok := st.LASRecords[p.RecordID]; ok {
+								continue
+							}
+						}
 						if p.Removed || strings.EqualFold(p.Role, "patient") || slices.ContainsFunc(p.Roles, func(role string) bool { return strings.EqualFold(role, "patient") }) || lookupMinor(p.DOB, p.ApproxAge, now) || !lookupNameMatches(name, p) || q.DOB != "" && p.DOB != q.DOB {
 							continue
 						}
@@ -174,7 +182,8 @@ func (s *Server) mdtLookupRoutes() {
 								description = append(description, part.label+": "+part.value)
 							}
 						}
-						hits = append(hits, mdtLookupHit{Record: p.ID, Incident: in.Number, Seen: in.Created, Name: display, DOB: p.DOB, Sex: p.Sex, Description: strings.Join(description, " · "), Safety: p.Safety})
+						p.Returns = nil
+						hits = append(hits, mdtLookupHit{Person: &p, Record: p.ID, Incident: in.Number, Seen: in.Created, Name: display, DOB: p.DOB, Sex: p.Sex, Description: strings.Join(description, " · "), Safety: p.Safety})
 					}
 				} else {
 					for _, v := range in.Vehicles {
@@ -190,10 +199,21 @@ func (s *Server) mdtLookupRoutes() {
 					continue
 				}
 				if q.Kind == "person" {
-					if lookupMinor(r.DOB, "", now) || !lookupNameMatches(name, cad.Person{Name: r.Name, Aliases: r.Aliases}) || (q.DOB != "" && q.DOB != r.DOB) {
+					p := cad.LASRecordPerson(r)
+					flags := []*cad.Flag{}
+					for _, f := range st.LASPersonFlags(r.ID,p,now) {
+						flags = append(flags, st.FlagFor(f, cad.DutyOf(a), a.Role))
+					}
+					if lookupMinor(r.DOB, p.ApproxAge, now) || !lookupNameMatches(name, p) || (q.DOB != "" && q.DOB != r.DOB) {
 						continue
 					}
-					hits = append(hits, mdtLookupHit{Source: "LAS directory", Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety})
+					refs := []cad.PersonRef{}
+					for _, ref := range st.LASPersonRefs(r.ID) {
+						if in := st.Incidents[ref.Incident]; in != nil && (in.Agency == "" || strings.EqualFold(in.Agency, own.Agency)) {
+							refs = append(refs, ref)
+						}
+					}
+					hits = append(hits, mdtLookupHit{Flags: flags, Person: &p, Incidents: refs, Source: "LAS directory", Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety || len(flags) > 0})
 				} else {
 					if plate != "" && !strings.Contains(lookupID(r.Plate), plate) || vin != "" && !strings.Contains(lookupID(r.VIN), vin) || q.State != "" && !strings.EqualFold(q.State, r.State) {
 						continue

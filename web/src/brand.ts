@@ -1,5 +1,6 @@
 // LAS is one North Dakota private-security organization. Compatibility keys stay internal.
 export const BRAND = {
+	las: true,
   governmentConnections: false, name: 'Lakes Area Security', legalName: 'Lakes Area Security Corporation', product: 'LAS Operations',
   scope: 'Private security · North Dakota', management: 'https://mgt.lakesareasecurity.com',
   notice: 'AUTHORIZED USE ONLY — Lakes Area Security Corporation. Access and activity are recorded.',

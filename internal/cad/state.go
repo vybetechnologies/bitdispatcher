@@ -141,6 +141,7 @@ type actionData struct {
 
 // State is everything bitdispatcher knows, rebuilt from the ledger.
 type State struct {
+	lasPeople      bool
 	LASRecords     map[string]LASRecord     `json:"lasRecords,omitempty"`
 	LASPublicCalls map[string]LASPublicCall `json:"lasPublicCalls,omitempty"`
 	Seq            uint64                   `json:"seq"`

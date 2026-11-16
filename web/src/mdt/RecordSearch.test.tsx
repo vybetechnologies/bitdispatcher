@@ -7,6 +7,18 @@ vi.mock('../ui',()=>({Modal:({children,title}:{children:React.ReactNode;title:st
 afterEach(()=>{cleanup();vi.restoreAllMocks()})
 const empty={kind:'person',items:[],more:false,source:'LAS CAD records',searchedAt:'2026-11-15T12:00:00Z'}
 describe('MDT private record lookup',()=>{
+ it('displays full entered person identifiers and the core officer safety flag',async()=>{
+  vi.spyOn(api,'post').mockResolvedValue({...empty,items:[{record:'LASR-1',source:'LAS directory',seen:empty.searchedAt,name:'Test Person',person:{id:'',role:'subject',ssn:'123-45-6789',dl:'FULL-DL',address:'Test address',notes:'Fixture notes'},flags:[{id:'FL1',title:'Core safety fixture',warning:'Test concern',instruction:'Contact dispatch'}],incidents:[{incident:'LAS-1',role:'witness'}]}]})
+  render(<RecordSearch onClose={()=>{}}/> )
+  fireEvent.change(screen.getByLabelText('Name or alias'),{target:{value:'Test Person'}})
+  fireEvent.click(screen.getByRole('button',{name:'Search LAS records'}))
+  await waitFor(()=>expect(screen.getByText('Full person information')).toBeTruthy())
+  fireEvent.click(screen.getByText('Full person information'))
+  expect(screen.getByText('123-45-6789')).toBeTruthy()
+  expect(screen.getByText('FULL-DL')).toBeTruthy()
+  expect(screen.getByText('Officer safety · Core safety fixture')).toBeTruthy()
+  expect(screen.getByText('Connected incidents: LAS-1 (witness)')).toBeTruthy()
+ })
  it('submits a person search only to the local MDT endpoint and explains no matches',async()=>{
   const post=vi.spyOn(api,'post').mockResolvedValue(empty)
   render(<RecordSearch onClose={()=>{}} />)

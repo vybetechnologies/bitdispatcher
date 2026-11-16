@@ -1,4 +1,5 @@
 import { BRAND } from '../brand'
+import RecordPersonPicker from './RecordPersonPicker'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { AlertTriangle, Car, Copy, Link2, Pencil, Plus, Search, Send, ShieldAlert, Trash2, Truck, Users } from 'lucide-react'
@@ -174,6 +175,7 @@ function PersonCard({ p, inc, codes, onEdit, onRemove }: { p: Person; inc?: Inci
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-slate-100">{p.name || 'Unnamed'}</div>
+          {p.recordId&&<div className="font-mono text-[10px] text-amber-300">Connected person record · {p.recordId}</div>}
           {desc && <div className="text-slate-400">{desc}</div>}
           <div className="text-slate-400">
             {[
@@ -255,12 +257,13 @@ function locText(p: Person): string {
   }
 }
 
-function PersonForm({ value, roles, codes, onCancel, onSave }: {
+export function PersonForm({ value, roles, codes, onCancel, onSave, recordMode = false }: {
   value: Person
   roles: string[]
   codes: ReturnType<typeof useCodes>
   onCancel: () => void
   onSave: (p: Person) => Promise<boolean>
+  recordMode?: boolean
 }) {
   const [p, setP] = useState<Person>({ ...value, roles: value.roles?.length ? value.roles : [value.role] })
   const [matches, setMatches] = useState<PersonHit[]>([])
@@ -302,6 +305,7 @@ function PersonForm({ value, roles, codes, onCancel, onSave }: {
   return (
     <form className="panel space-y-3 rounded-lg p-3" onSubmit={submit} aria-label={p.id ? 'Change person' : 'New person'}>
       <h3 className="text-xs font-bold text-slate-100">{p.id ? 'Change person' : 'New person'}</h3>
+      {BRAND.las && !recordMode && <RecordPersonPicker value={p} onUse={setP}/>}
 
       {/* roles */}
       <fieldset>

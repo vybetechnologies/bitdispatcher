@@ -328,7 +328,12 @@ func (s *Server) personRoutes() {
 			return
 		}
 		var hits []cad.PersonHit
-		s.Eng.Read(func(st *cad.State) { hits = st.FindPersons(q, 50) })
+		s.Eng.Read(func(st *cad.State) {
+			hits = st.FindPersons(q, 50)
+			if s.LAS {
+				lasFullIdentifiers(st, hits)
+			}
+		})
 		terms := []string{}
 		for k, v := range map[string]string{"first": q.First, "middle": q.Middle, "last": q.Last, "dob": q.DOB, "phone": q.Phone, "address": q.Address, "ssn": q.SSN, "dl": q.DL, "alias": q.Alias, "plate": q.Plate} {
 			if v != "" {
@@ -346,7 +351,12 @@ func (s *Server) personRoutes() {
 			return
 		}
 		var hits []cad.PersonHit
-		s.Eng.Read(func(st *cad.State) { hits = st.PossibleMatches(p) })
+		s.Eng.Read(func(st *cad.State) {
+			hits = st.PossibleMatches(p)
+			if s.LAS {
+				lasFullIdentifiers(st, hits)
+			}
+		})
 		writeJSON(w, 200, map[string]any{"items": none(hits)})
 	})
 	s.handle("POST /api/incidents/{n}/persons/{p}/identifiers", auth.Dispatcher, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
@@ -367,6 +377,43 @@ func (s *Server) personRoutes() {
 
 // maskIncident is an incident as the shared board carries it: identifiers masked, returns without their
 // content (those allowed open them from the record, and that is recorded).
+// LAS is a controlled authenticated workspace: full entered person fields are
+// displayed as requested. Government inquiry returns retain their existing flow.
+func (s *Server) incidentView(in *cad.Incident) *cad.Incident {
+	if !s.LAS {
+		return maskIncident(in)
+	}
+	c := *in
+	c.Persons = append([]cad.Person(nil), in.Persons...)
+	for i := range c.Persons {
+		c.Persons[i].Returns = stripReturns(c.Persons[i].Returns)
+	}
+	c.Vehicles = append([]cad.Vehicle(nil), in.Vehicles...)
+	for i := range c.Vehicles {
+		c.Vehicles[i].Returns = stripReturns(c.Vehicles[i].Returns)
+	}
+	return &c
+}
+func lasFullIdentifiers(st *cad.State, hits []cad.PersonHit) {
+	for i := range hits {
+		for _, ref := range hits[i].Incidents {
+			in := st.Incidents[ref.Incident]
+			if in == nil {
+				continue
+			}
+			for _, p := range in.Persons {
+				if p.ID == ref.Person {
+					hits[i].SSN = p.SSN
+					hits[i].DL = strings.TrimSpace(p.DL + " " + p.DLState)
+					break
+				}
+			}
+			if hits[i].SSN != "" || hits[i].DL != "" {
+				break
+			}
+		}
+	}
+}
 func maskIncident(in *cad.Incident) *cad.Incident {
 	if len(in.Persons) == 0 && len(in.Vehicles) == 0 {
 		return in

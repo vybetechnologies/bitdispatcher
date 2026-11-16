@@ -132,7 +132,7 @@ func (s *Server) mdt(w http.ResponseWriter, r *http.Request, se *auth.Session, a
 		}
 		if in, ok := st.Incidents[u.Incident]; ok {
 			ic := *in
-			v.Incident = maskIncident(&ic)
+			v.Incident = s.incidentView(&ic)
 			v.TypeName = in.Type
 			v.Summary = st.Summary(in)
 			if in.Location != nil && in.Location.Lat != nil && in.Location.Lon != nil {
@@ -160,7 +160,7 @@ func (s *Server) mdt(w http.ResponseWriter, r *http.Request, se *auth.Session, a
 		for _, in := range st.Incidents {
 			if in.Status == cad.Pending {
 				ic := *in
-				v.Pending = append(v.Pending, maskIncident(&ic))
+				v.Pending = append(v.Pending, s.incidentView(&ic))
 			}
 		}
 		v.Messages = copyMessages(st.MessagesFor(unit, time.Now().Add(-messageWindow)))
