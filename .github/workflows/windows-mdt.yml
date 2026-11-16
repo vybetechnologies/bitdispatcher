@@ -44,7 +44,13 @@ jobs:
         run: |
           $test = Start-Process desktop/publish/LAS.MDT.exe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
           if ($test.ExitCode -ne 0) { if (Test-Path native-test-error.txt) { Get-Content native-test-error.txt }; throw "Native MDT tests failed" }
-      - name: Build independent installer
+      - name: Test offline map delivery in actual WebView2
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $test = Start-Process desktop/publish/LAS.MDT.exe -ArgumentList '--webview-self-test' -WindowStyle Hidden -Wait -PassThru
+          if ($test.ExitCode -ne 0) { if (Test-Path native-webview-error.txt) { Get-Content native-webview-error.txt }; throw "Actual WebView2 map delivery test failed" }
+      - name: Package independent installer
         shell: pwsh
         run: |
           [xml]$project = Get-Content desktop/LAS.Mdt.Windows/LAS.Mdt.Windows.csproj

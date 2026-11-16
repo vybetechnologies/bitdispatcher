@@ -7,6 +7,27 @@ vi.mock('../ui',()=>({Modal:({children,title}:{children:React.ReactNode;title:st
 afterEach(()=>{cleanup();vi.restoreAllMocks()})
 const empty={kind:'person',items:[],more:false,source:'LAS CAD records',searchedAt:'2026-11-15T12:00:00Z'}
 describe('MDT private record lookup',()=>{
+ it('shows an employee tag without turning it into a safety warning',async()=>{
+  const announce=vi.fn()
+  vi.spyOn(api,'post').mockResolvedValue({...empty,items:[{record:'EMP1',seen:empty.searchedAt,name:'Test Employee',person:{name:'Test Employee',agencyEmployee:true}}]})
+  render(<RecordSearch onClose={()=>{}} onCaution={announce}/>)
+  fireEvent.change(screen.getByLabelText('Name or alias'),{target:{value:'Test Employee'}})
+  fireEvent.click(screen.getByRole('button',{name:'Search LAS records'}))
+  await waitFor(()=>expect(announce).toHaveBeenCalledWith(expect.stringContaining('employee of Lakes Area Security')))
+  expect(announce.mock.calls[0][0]).not.toContain('Officer safety warning')
+  expect(screen.getByText('LAS employee · agency affiliation (informational)').className).toContain('teal')
+  expect(screen.queryByText(/Recorded safety concern/)).toBeNull()
+ })
+ it('keeps core safety flags and their voice warning on an employee record',async()=>{
+  const announce=vi.fn()
+  vi.spyOn(api,'post').mockResolvedValue({...empty,items:[{record:'EMP2',seen:empty.searchedAt,name:'Test Employee',person:{agencyEmployee:true},flags:[{id:'F1',title:'Existing caution',warning:'Safety warning',instruction:'Contact dispatch'}]}]})
+  render(<RecordSearch onClose={()=>{}} onCaution={announce}/>)
+  fireEvent.change(screen.getByLabelText('Name or alias'),{target:{value:'Test Employee'}})
+  fireEvent.click(screen.getByRole('button',{name:'Search LAS records'}))
+  await waitFor(()=>expect(announce).toHaveBeenCalledWith(expect.stringContaining('Officer safety warning')))
+  expect(announce.mock.calls[0][0]).toContain('employee of Lakes Area Security')
+  expect(screen.getByText('Officer safety · Existing caution')).toBeTruthy()
+ })
  it('distinguishes a provider failure from no local matches',async()=>{
   vi.spyOn(api,'post').mockResolvedValue({...empty,providerMessage:'Enformion Person Search is not enabled for this API access profile.'})
   render(<RecordSearch onClose={()=>{}}/>)

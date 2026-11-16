@@ -440,7 +440,7 @@ function MdtEntry({ inc, unit }: { inc: Incident; unit: string }) {
       {changed && <p className="rounded border border-amber-600 bg-amber-950/40 p-1.5 font-semibold text-amber-100" role="alert">Location changed at {new Date(inc.changed!.at).toLocaleTimeString()}: now {inc.location?.address || `${inc.location?.lat?.toFixed(5)}, ${inc.location?.lon?.toFixed(5)}`}</p>}
       {inc.talkgroup && <p className="text-slate-300">Talkgroup <b className="font-mono text-slate-50">{inc.talkgroup}</b></p>}
       {(inc.modifiers?.length ?? 0) > 0 && <p className="text-rose-200">{inc.modifiers!.join(' · ')}</p>}
-      {(inc.persons ?? []).filter((p) => !p.removed).map((p) => <p key={p.id} className={p.safety ? 'font-semibold text-rose-200' : 'text-slate-300'}>{p.role}: {p.name || '—'} {[p.dob, p.clothing].filter(Boolean).join(' · ')}</p>)}
+      {(inc.persons ?? []).filter((p) => !p.removed).map((p) => <p key={p.id} className={p.safety ? 'font-semibold text-rose-200' : 'text-slate-300'}>{p.role}: {p.name || '—'} {p.agencyEmployee&&<span className="ml-1 rounded border border-teal-600 bg-teal-950/40 px-1.5 py-0.5 text-xs font-semibold text-teal-200">LAS employee</span>} {[p.dob, p.clothing].filter(Boolean).join(' · ')}</p>)}
       {(inc.vehicles ?? []).filter((v) => !v.removed).map((v) => <p key={v.id} className="text-slate-300">{v.role}: {[v.color, v.make, v.model].filter(Boolean).join(' ')} <span className="font-mono text-amber-200">{v.state} {v.plate}</span>{v.direction ? ` → ${v.direction}` : ''}</p>)}
     </div>
   )

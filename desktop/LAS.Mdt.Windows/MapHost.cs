@@ -2,10 +2,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Text;
+using System.IO.Compression;
 namespace LasMdt;
 internal sealed record MapAnswer(int Status,string ContentType,string? Encoding,string? Data);
 internal sealed class MapHost : IDisposable
 {
+ internal static byte[] ResponseBytes(MapAnswer answer){
+  var bytes=Convert.FromBase64String(answer.Data??"");
+  if(answer.Encoding!="gzip"||bytes.Length==0)return bytes;
+  using var source=new MemoryStream(bytes,false);using var gzip=new GZipStream(source,CompressionMode.Decompress);using var output=new MemoryStream();gzip.CopyTo(output);return output.ToArray();
+ }
  internal static string MapPath=>Path.Combine(AppPaths.Data,"recorded-map.db");
  private Process? worker;
  private readonly SemaphoreSlim gate=new(1,1);

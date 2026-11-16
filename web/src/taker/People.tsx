@@ -164,6 +164,7 @@ function PersonCard({ p, inc, codes, onEdit, onRemove }: { p: Person; inc?: Inci
     .join(' · ')
   return (
     <li className={cx('panel rounded-md px-2 py-1.5 text-xs', p.safety && 'border-rose-700')}>
+      {p.agencyEmployee&&<span className="chip border border-teal-600 bg-teal-950/40 text-teal-200">LAS employee</span>}
       <div className="flex items-start gap-2">
         <div className="flex flex-col gap-0.5">
           {roles.map((r, i) => (
@@ -493,6 +494,7 @@ export function PersonForm({ value, roles, codes, onCancel, onSave, recordMode =
         </div>
       </fieldset>
 
+      <label className="flex items-center gap-2 rounded border border-teal-700 bg-teal-950/20 p-2 text-sm text-teal-200"><input type="checkbox" checked={!!p.agencyEmployee} onChange={e=>set({agencyEmployee:e.target.checked})}/> LAS employee · informational agency affiliation</label>
       {/* officer safety */}
       <div>
         <label className="flex items-center gap-1.5 text-xs text-rose-200">

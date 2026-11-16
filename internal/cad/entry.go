@@ -99,9 +99,10 @@ type Security struct {
 
 // Person is someone on an incident: the caller, a victim, a suspect, a witness.
 type Person struct {
-	RecordID string `json:"recordId,omitempty"`
-	ID       string `json:"id"`
-	Role     string `json:"role"` // caller, victim, suspect, witness, complainant, subject, patient, other
+	AgencyEmployee bool   `json:"agencyEmployee,omitempty"` // informational; independent of officer-safety concerns
+	RecordID       string `json:"recordId,omitempty"`
+	ID             string `json:"id"`
+	Role           string `json:"role"` // caller, victim, suspect, witness, complainant, subject, patient, other
 	// Roles are every role the person has on the incident (Role is the first).
 	Roles []string `json:"roles,omitempty"`
 	// Name is "LAST, FIRST MIDDLE SUFFIX", made from the separate parts when they are given.

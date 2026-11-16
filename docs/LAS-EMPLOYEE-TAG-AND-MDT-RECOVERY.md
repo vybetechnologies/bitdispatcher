@@ -1,0 +1,9 @@
+# Employee information and Windows MDT recovery
+
+The shared incident/local-record person schema includes `agencyEmployee`. Call taker and Admin → Persons & vehicles expose an independent teal **LAS employee** checkbox. It is informational and never sets `safety`, changes an officer-safety note, or replaces a core flag. The label appears in call-taker person cards, MDT person-search results and assigned-call people. MDT voice identifies the employee separately, while existing safety cautions remain displayed and spoken. CSV imports accept the boolean `agencyEmployee` column; JSON accepts `person.agencyEmployee`. Downloaded full person records preserve it offline.
+
+Windows 1.0.4 decodes gzip-compressed recorded vector tiles before handing their bytes to WebView2's synthetic response stream. The recorded map database and helper were checked on the affected device and returned valid tiles. Packaging now runs an actual WebView2 fetch/byte-delivery regression in addition to helper IPC and protected-storage tests.
+
+The sync outbox processes unrelated entries after a rejected entry instead of blocking the entire queue. Rejected work remains in the outbox for review; automatic polling skips those entries, and either Sync now control explicitly retries them. Older commands without a live/training label can be recovered from the outbox after the operator confirms they were live work. The app backs up the original protected entry, retains command IDs and bindings, and never relabels training work automatically.
+
+The affected operator confirmed all legacy work was live. Three unlabeled GPS entries were labeled live with encrypted originals preserved. After reopening the installed app, the pending queue visibly drained from 50 to 0. No records, notes, messages, or queued work were discarded.

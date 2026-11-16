@@ -19,6 +19,7 @@ export function voiceSnapshot(m: MDTView, messages: CommView[], weather: Weather
   for(const call of m.pending||[])add('pending:'+call.number,`New call for service. ${call.type}. Priority ${call.priority}. ${words(call.location?.address)}. Call ${call.number}.`,call.priority<=2?1:2)
   if(lookupCaution)add('lookup-caution:'+lookupCaution.id,lookupCaution.text,-1)
   if(i) {
+    for(const p of i.persons||[])if(p.agencyEmployee&&!p.removed)add('employee:'+i.number+':'+p.id,`Agency employee information. ${words(p.name)||'A subject on this call'} is an employee of Lakes Area Security.`,2)
     add('call-status',`Call ${i.number}. ${i.status}. Priority ${i.priority}.`)
     if(i.newLocation) add('location-change',`Dispatch changed the call location. ${words(i.newLocation.location.address)}`,0)
     for(const f of i.flags || []) add('flag:'+f.id,`Safety flag. ${words(f.title)}. ${words(f.severity)}`,0)

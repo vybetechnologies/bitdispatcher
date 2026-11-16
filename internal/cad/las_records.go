@@ -295,6 +295,7 @@ func (s *State) syncLASPerson(in *Incident, p Person, at time.Time, by string) {
 	if exists && r.Person != nil && r.FromIncident != in.Number {
 		p.Safety = r.Person.Safety
 		p.SafetyNote = r.Person.SafetyNote
+		p.AgencyEmployee = r.Person.AgencyEmployee
 	}
 	r.Person = &p
 	r.Name = p.Name

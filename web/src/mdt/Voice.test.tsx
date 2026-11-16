@@ -5,6 +5,11 @@ import type { MDTView } from './Mdt'
 import type { CommView } from '../types'
 import type { WeatherFeature } from '../WeatherAlerts'
 const m={unit:{id:'SEC1',status:'dispatched'},incident:{number:'LAS123',type:'ALARM',priority:2,status:'open',location:{address:'100 Main St'},timeline:[]},typeName:'Alarm',cautions:[{id:'dog',name:'Dog',note:'Loose dog'}],bolos:[{id:'b1',text:'Blue vehicle',plate:'ABC'}]} as unknown as MDTView
+it('announces employee affiliation independently of existing safety cautions',()=>{
+ const next=voiceSnapshot({...m,incident:{...m.incident!,persons:[{id:'EMP1',role:'subject',name:'Test Employee',agencyEmployee:true}] }},[])
+ expect(next.find(n=>n.id.includes('employee:'))?.text).toContain('employee of Lakes Area Security')
+ expect(next.find(n=>n.id==='caution:dog')?.text).toContain('Safety warning')
+})
 afterEach(()=>{cleanup();vi.unstubAllGlobals()})
 const weather:WeatherFeature={type:'Feature',id:'wx1',geometry:null,properties:{id:'wx1',event:'Blizzard Warning',areaDesc:'Cass and Clay',headline:'Whiteout conditions',instruction:'Avoid travel',description:'Snow and wind',severity:'Severe',urgency:'Immediate',certainty:'Observed',sent:new Date().toISOString(),effective:new Date().toISOString(),expires:new Date(Date.now()+3600000).toISOString()}}
 function speechMock(){

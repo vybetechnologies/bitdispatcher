@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, CloudOff, RefreshCw, TriangleAlert } from 'lucide-react'
-import { desktopOutbox, desktopState, discardDesktopCommand, isWindowsMdt, retryDesktopSync, startDesktopSync } from './desktop'
+import { desktopOutbox, desktopState, discardDesktopCommand, isWindowsMdt, retryDesktopSync, startDesktopSync, recoverLegacyLiveEntries } from './desktop'
 import type { DesktopCommand } from './desktop'
 
 export default function DesktopStatus(){
@@ -24,6 +24,7 @@ export default function DesktopStatus(){
   </div>
   {status.error&&<p className="mt-1 flex gap-2 text-xs text-amber-200"><TriangleAlert size={14}/>{status.error}</p>}
   {open&&<section aria-label="Windows MDT sync outbox" className="absolute inset-x-0 top-full z-50 mx-3 max-h-[45vh] space-y-2 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-3 shadow-xl">
+   {items.some(item=>!item.Context)&&<button className="btn text-xs" onClick={()=>{if(confirm('Confirm these older unlabeled entries were ALL recorded during LIVE LAS operations. Training work must not be sent to the live board. Originals will be backed up on this device.'))void recoverLegacyLiveEntries().then(()=>desktopOutbox().then(setItems)).catch(e=>alert(e instanceof Error?e.message:String(e)))}}>Recover older live entries</button>}
    {!items.length&&<p className="text-xs text-slate-400">All saved work has synced.</p>}
    {items.map(item=><article key={item.ID} className="rounded border border-slate-700 p-2 text-xs">
     <div className="flex flex-wrap items-center gap-2"><b>{item.Path}</b><span>{new Date(item.At).toLocaleString()} · {item.Unit}</span><span className="ml-auto">{item.error?'Review needed':'Waiting to sync'}</span></div>

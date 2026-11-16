@@ -71,7 +71,7 @@ internal sealed class TerminalWindow : Window
     if(window.top===window && location.origin==='https://cad.lakesareasecurity.com' && (location.pathname==='/'||location.pathname==='/index.html')){
      const waiting=new Map();let seq=0;
      window.chrome.webview.addEventListener('message',e=>{const r=e.data;if(!r||!waiting.has(r.id))return;const p=waiting.get(r.id);waiting.delete(r.id);clearTimeout(p.timer);r.error?p.reject(new Error(r.error)):p.resolve(r.value);});
-     window.lasDesktop={version:'1.0.3',call:(op,key,value)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{waiting.delete(id);reject(new Error('Windows storage did not respond. Keep this work open and retry.'));},op==='downloadMap'?900000:120000);waiting.set(id,{resolve,reject,timer});window.chrome.webview.postMessage({id,op,key,value});})};
+     window.lasDesktop={version:'1.0.4',call:(op,key,value)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{waiting.delete(id);reject(new Error('Windows storage did not respond. Keep this work open and retry.'));},op==='downloadMap'?900000:120000);waiting.set(id,{resolve,reject,timer});window.chrome.webview.postMessage({id,op,key,value});})};
     }
     """);
    core.Navigate(AppPaths.Origin+"/#/mdt");
@@ -114,9 +114,14 @@ internal sealed class TerminalWindow : Window
    try{
     var result=await maps.Request(uri.PathAndQuery,null);
     if(result.Status==404)return;
-    e.Response=terminal.CoreWebView2.Environment.CreateWebResourceResponse(new MemoryStream(Convert.FromBase64String(result.Data??"")),result.Status,"Offline recorded map","Content-Type: "+result.ContentType+"\r\n"+(result.Encoding=="gzip"?"Content-Encoding: gzip\r\n":""));
+    // WebView2 synthetic response streams must contain decoded tile bytes.
+    e.Response=MapResponse(terminal.CoreWebView2.Environment,result);
    }catch{ /* The normal network map remains available if the local package is not prepared. */ }
   }
+ }
+ internal static CoreWebView2WebResourceResponse MapResponse(CoreWebView2Environment environment,MapAnswer result){
+  var decoded=MapHost.ResponseBytes(result);
+  return environment.CreateWebResourceResponse(new MemoryStream(decoded,false),result.Status,"Offline recorded map","Content-Type: "+result.ContentType+"\r\nCache-Control: no-store\r\n");
  }
  private async void Bridge(object? sender,CoreWebView2WebMessageReceivedEventArgs e)
  {

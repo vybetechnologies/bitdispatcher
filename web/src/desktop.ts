@@ -36,7 +36,20 @@ export async function desktopOutbox(){if(!isWindowsMdt())return [];await init();
 async function refreshCount(){if(identity)announce({pending:(await ids()).length});else announce({pending:0})}
 async function remove(id:string){await save(queueKey(),(await ids()).filter(x=>x!==id));await window.lasDesktop!.call('delete',commandKey(id));await refreshCount()}
 export async function discardDesktopCommand(id:string){await init();await serialize(async()=>remove(id));announce({error:''})}
-export async function retryDesktopSync(){announce({error:''});await syncDesktop()}
+export async function retryDesktopSync(){announce({error:''});await syncDesktop(true)}
+export async function recoverLegacyLiveEntries(){
+ await init()
+ if(!identity||identity.session.training)throw new Error('Open your live assigned-unit MDT before recovering live entries.')
+ await serialize(async()=>{
+  for(const cmd of await desktopOutbox()){
+   if(cmd.Context||cmd.Owner!==identity!.session.username||cmd.Unit!==identity!.session.mdtUnit)continue
+   await save('legacy-backup:'+scope()+':'+cmd.ID,cmd)
+   cmd.Context='live';delete cmd.error;delete cmd.status
+   await save(commandKey(cmd.ID),cmd)
+  }
+ })
+ await retryDesktopSync()
+}
 function serialize<T>(f:()=>Promise<T>):Promise<T>{const result=writeChain.then(f);writeChain=result.then(()=>{},()=>{});return result}
 async function network(method:string,path:string,body?:unknown){
  const headers:Record<string,string>={'X-BitDispatcher':'1'}
@@ -104,7 +117,7 @@ async function queuedResponse(cmd:DesktopCommand){
  if(cmd.Path==='/rms/reports'){return reply((await cached('/rms/reports/'+String(cmd.Body.number||cmd.localReport)))?.data)}
  return reply({queued:true,id:'OFFLINE-'+cmd.ID,key:'OFFLINE-'+cmd.ID})
 }
-export async function syncDesktop(){
+export async function syncDesktop(retryRefused=false){
  if(!isWindowsMdt())return
  await init();if(flushing)return flushing
  flushing=(async()=>{
@@ -114,8 +127,10 @@ export async function syncDesktop(){
    const me=await meResponse.json() as {signedIn:boolean;session?:Session}
    if(!me.signedIn||me.session?.username!==identity.session.username||me.session.mdtUnit!==identity.session.mdtUnit||workContext(me.session)!==workContext(identity.session)){announce({error:'Saved work is bound to its original account and unit. Sign in with that account to sync.'});return}
    announce({connected:true})
+   const attempted=new Set<string>()
    for(;;){
-    const list=await desktopOutbox();const cmd=list.find(x=>x.Path==='/mdt/emergency')||list[0];if(!cmd)break
+    const list=await desktopOutbox();const candidates=list.filter(x=>!attempted.has(x.ID)&&(!x.error||retryRefused));const cmd=candidates.find(x=>x.Path==='/mdt/emergency')||candidates[0];if(!cmd)break
+    attempted.add(cmd.ID)
     const mappings=await read<Record<string,{number:string;updated:string}>>('reports:'+scope())||{}
     const payload=structuredClone(cmd);delete payload.error;delete payload.status
     if(cmd.Path==='/rms/reports'){
@@ -124,7 +139,7 @@ export async function syncDesktop(){
     const response=await network('POST','/mdt/offline/sync',payload)
     if(!response.ok){
      const error=await response.clone().json().catch(()=>({})) as {message?:string}
-     cmd.error=error.message||'Sync refused this action';cmd.status=response.status;await save(commandKey(cmd.ID),cmd);if(awaitingResult.has(cmd.ID))results.set(cmd.ID,response);announce({error:cmd.error});break
+     cmd.error=error.message||'Sync refused this action';cmd.status=response.status;await save(commandKey(cmd.ID),cmd);if(awaitingResult.has(cmd.ID))results.set(cmd.ID,response);announce({error:cmd.error});continue
     }
     if(awaitingResult.has(cmd.ID))results.set(cmd.ID,response.clone())
     if(cmd.Path==='/rms/reports'){
@@ -133,7 +148,8 @@ export async function syncDesktop(){
     }
     await remove(cmd.ID)
     if(['/mdt/status','/mdt/markout','/mdt/attach','/mdt/crew'].includes(cmd.Path)){try{const fresh=await network('GET','/mdt');if(fresh.ok)await putCache('/mdt',await fresh.json())}catch{/* The command receipt remains valid when the follow-up view cannot load. */}}
-    announce({lastSync:Date.now(),error:''});window.dispatchEvent(new Event('las:synced'))
+    const refused=(await desktopOutbox()).find(x=>x.error)
+    announce({lastSync:Date.now(),error:refused?.error||''});window.dispatchEvent(new Event('las:synced'))
    }
   }catch(e){announce({connected:false,error:e instanceof Error?e.message:'Connection unavailable'})}
  })().finally(()=>{flushing=null})
@@ -202,6 +218,7 @@ export async function desktopFile(path:string,file:File):Promise<Response>{
 export function startDesktopSync(){
  if(!isWindowsMdt())return ()=>{}
  const run=()=>void syncDesktop();const timer=window.setInterval(run,5000)
- window.addEventListener('online',run);window.addEventListener('las:sync',run)
- return()=>{clearInterval(timer);window.removeEventListener('online',run);window.removeEventListener('las:sync',run)}
+ const manual=()=>void retryDesktopSync()
+ window.addEventListener('online',run);window.addEventListener('las:sync',manual)
+ return()=>{clearInterval(timer);window.removeEventListener('online',run);window.removeEventListener('las:sync',manual)}
 }

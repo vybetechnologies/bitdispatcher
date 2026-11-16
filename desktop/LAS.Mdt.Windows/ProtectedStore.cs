@@ -43,6 +43,11 @@ internal static class NativeSelfTest
   if(Directory.GetFiles(path).Any(p=>File.ReadAllText(p).Contains(value)))throw new Exception("Offline storage was not protected.");
   store.Delete("outbox").GetAwaiter().GetResult();if(store.Read("outbox").GetAwaiter().GetResult()!=null)throw new Exception("Delete failed.");
   Directory.Delete(path);
+  using(var compressed=new MemoryStream()){
+   using(var zip=new System.IO.Compression.GZipStream(compressed,System.IO.Compression.CompressionMode.Compress,true))zip.Write(new byte[]{26,3,10,1,65});
+   var decoded=MapHost.ResponseBytes(new MapAnswer(200,"application/vnd.mapbox-vector-tile","gzip",Convert.ToBase64String(compressed.ToArray())));
+   if(!decoded.SequenceEqual(new byte[]{26,3,10,1,65}))throw new Exception("WebView map response must be decoded protobuf, not gzip bytes.");
+  }
   using(var map=new MapHost()){var glyph=map.Request("/api/map/fonts/Noto%20Sans%20Regular/0-255.pbf",null).GetAwaiter().GetResult();if(glyph.Status!=200||string.IsNullOrEmpty(glyph.Data))throw new Exception("Offline map engine IPC failed.");}
   if(!Updates.TrustedDownload(new Uri("https://github.com/vybetechnologies/bitdispatcher/releases/download/mdt-v1.0.0/LAS-MDT-Setup-x64.exe")))throw new Exception("Trusted release rejected.");
   if(Updates.TrustedDownload(new Uri("https://example.com/installer.exe")))throw new Exception("Untrusted updater host accepted.");

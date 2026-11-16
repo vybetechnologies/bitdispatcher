@@ -112,7 +112,7 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 			return nil, fmt.Errorf("CSV header is missing")
 		}
 		allowed := map[string]bool{}
-		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,safety,safetyNote"
+		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,agencyEmployee,safety,safetyNote"
 		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,"+personFields, ",") {
 			allowed[h] = true
 		}
@@ -150,7 +150,7 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 					obj[h] = nested
 				} else if h == "aliases" || h == "roles" {
 					obj[h] = strings.Split(v, "|")
-				} else if h == "safetyConcern" || h == "restricted" || h == "safety" {
+				} else if h == "safetyConcern" || h == "restricted" || h == "safety" || h == "agencyEmployee" {
 					b, e := strconv.ParseBool(v)
 					if e != nil {
 						return nil, fmt.Errorf("CSV row %d: %s must be true or false", row, h)

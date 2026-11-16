@@ -14,6 +14,30 @@ function storageFixture(){
  return files
 }
 describe('Windows MDT durable offline work',()=>{
+ it('retains a rejected legacy entry while syncing unrelated new work',async()=>{
+  const files=storageFixture();vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')))
+  const desktop=await import('./desktop')
+  await desktop.desktopRequest('POST','/mdt/position',{lat:46.87,lon:-96.79})
+  await desktop.desktopRequest('POST','/mdt/position',{lat:46.88,lon:-96.79})
+  const [legacy,newer]=await desktop.desktopOutbox()
+  const key='command:alex|U1:'+legacy.ID
+  const old=JSON.parse(files.get(key)!);delete old.Context;files.set(key,JSON.stringify(old))
+  const sent:string[]=[]
+  vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{
+   if(url.endsWith('/auth/me'))return new Response(JSON.stringify({signedIn:true,session:{username:'alex',mdtUnit:'U1'}}))
+   const command=JSON.parse(String(options?.body));sent.push(command.ID)
+   return command.ID===legacy.ID?new Response(JSON.stringify({message:'Older app entry requires review'}),{status:409}):new Response(null,{status:204})
+  }))
+  await desktop.syncDesktop()
+  expect(sent).toEqual([legacy.ID,newer.ID]);expect(await desktop.desktopOutbox()).toHaveLength(1)
+  expect((await desktop.desktopOutbox())[0].error).toContain('requires review')
+  sent.length=0;await desktop.syncDesktop();expect(sent).toEqual([])
+  await desktop.retryDesktopSync();expect(sent).toEqual([legacy.ID])
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>url.endsWith('/auth/me')?new Response(JSON.stringify({signedIn:true,session:{username:'alex',mdtUnit:'U1'}})):new Response(null,{status:204})))
+  await desktop.recoverLegacyLiveEntries()
+  expect(await desktop.desktopOutbox()).toHaveLength(0)
+  expect(JSON.parse(files.get('legacy-backup:alex|U1:'+legacy.ID)!).ID).toBe(legacy.ID)
+ })
  it('isolates training work and refuses to sync it to a live session',async()=>{
   const files=storageFixture()
   const training={username:'alex',name:'Alex',role:'field',duty:'field',mdtUnit:'U1',training:true,exercise:'EX1'}
