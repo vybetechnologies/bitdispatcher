@@ -24,8 +24,15 @@ func (s *State) rememberOfflineCommand(ev ledger.Event) {
 	var ids struct {
 		Number, ID, Key   string
 		Updated, StatusAt time.Time
+		Report            *struct {
+			Number  string
+			Updated time.Time
+		}
 	}
 	_ = json.Unmarshal(ev.Data, &ids)
+	if ids.Report != nil {
+		ids.Number, ids.Updated = ids.Report.Number, ids.Report.Updated
+	}
 	at := ev.At
 	if !ids.StatusAt.IsZero() {
 		at = ids.StatusAt

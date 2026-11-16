@@ -27,3 +27,21 @@ func TestOfflinePreconditionsAtCommit(t *testing.T) {
 		}
 	})
 }
+
+func TestOfflineReportReceiptSurvivesLostAcknowledgement(t *testing.T) {
+	e, _, path := testEngine(t)
+	a := Actor{User: "fixture", ClientCommand: "fixture-report-create", ClientHash: "fixture-payload"}
+	number, err := e.SaveReport(a, RMSReport{Narrative: "Synthetic offline draft"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer other.Close()
+	result, ok := other.OfflineCommandResult(a.User, a.ClientCommand)
+	if !ok || result.Number != number || result.Updated.IsZero() {
+		t.Fatalf("report identity/version missing from durable receipt: %+v", result)
+	}
+}
