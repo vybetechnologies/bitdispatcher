@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, BadgeCheck, CheckCircle2, CircleAlert, FilePlus2, Plus, Send, Sparkles, Trash2, Undo2 } from 'lucide-react'
 import { api, errText } from '../api'
+import { isWindowsMdt } from '../desktop'
 import { can, store, useStore } from '../store'
 import type { Session } from '../types'
 import { Logo } from '../ui'
@@ -53,11 +54,11 @@ export default function Rms() {
     <div className="flex h-full bg-slate-950">
       <nav className="flex w-80 shrink-0 flex-col border-r border-slate-800 bg-slate-900" aria-label="Reports">
         <div className="flex items-center gap-2 border-b border-slate-800 p-2">
-          <Link to="/" className="flex items-center gap-2 rounded px-2 py-1 text-sm font-semibold text-slate-200 hover:bg-slate-800"><ArrowLeft size={14} aria-hidden /> <Logo size={18} /> Dispatch</Link>
+          <Link to={isWindowsMdt()?'/mdt':'/'} className="flex items-center gap-2 rounded px-2 py-1 text-sm font-semibold text-slate-200 hover:bg-slate-800"><ArrowLeft size={14} aria-hidden /> <Logo size={18} /> {isWindowsMdt()?'MDT':'Dispatch'}</Link>
           <button className="btn btn-go h-7 text-xs" onClick={async () => {
             try {
               const r = await api.post<{ report: Report }>('/rms/reports', { offenses: [], people: [], property: [], vehicles: [] })
-              nav(`/rms/${r.report.number}`)
+              nav(`${isWindowsMdt()?'/mdt/reports':'/rms'}/${r.report.number}`)
             } catch (e) { toast.error(errText(e)) }
           }}><FilePlus2 size={13} aria-hidden /> New</button>
         </div>
@@ -72,7 +73,7 @@ export default function Rms() {
           {shown.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">No reports. Write one from an incident (Report) or with New.</li>}
           {shown.map((r) => (
             <li key={r.number}>
-              <Link to={`/rms/${r.number}`} className={cx('block border-b border-slate-800/60 px-3 py-2 text-sm hover:bg-slate-800/60', r.number === number && 'bg-slate-800')}>
+              <Link to={`${isWindowsMdt()?'/mdt/reports':'/rms'}/${r.number}`} className={cx('block border-b border-slate-800/60 px-3 py-2 text-sm hover:bg-slate-800/60', r.number === number && 'bg-slate-800')}>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-slate-100">{r.number}</span>
                   <span className={cx('chip normal-case', STATUS_CLS[r.status])}>{r.status}</span>
@@ -84,7 +85,7 @@ export default function Rms() {
             </li>
           ))}
         </ul>
-        <a className="btn m-2 text-xs" href="https://mgt.lakesareasecurity.com/records-requests" target="_blank" rel="noopener noreferrer">Management records requests</a>
+        {!isWindowsMdt()&&<a className="btn m-2 text-xs" href="https://mgt.lakesareasecurity.com/records-requests" target="_blank" rel="noopener noreferrer">Management records requests</a>}
       </nav>
       <main className="min-w-0 flex-1 overflow-y-auto p-4">
         {number && meta ? <Editor key={number} number={number} meta={meta} me={me} onSaved={load} /> : (

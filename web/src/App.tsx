@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { checkMe, connect, disconnect, store, useStore } from './store'
+import { checkMe, connect, disconnect, signOut, store, useStore } from './store'
+import { api, errText } from './api'
 import { LockGuard } from './Lock'
 import Login from './Login'
 import Console from './Console'
@@ -14,6 +15,7 @@ import { useViews } from './access'
 import { KeyTestHost } from './keys'
 import { SignOffBlocked } from './SignOff'
 import { WorkspaceShell } from './ModuleSwitcher'
+import { isWindowsMdt } from './desktop'
 
 /** A supervisory screen only for people the agency gave it; a direct link shows why not. */
 function Given({ id, children }: { id: string; children: React.ReactNode }) {
@@ -37,6 +39,27 @@ const Continuity = lazy(() => import('./continuity/Continuity'))
 const Overflow = lazy(() => import('./continuity/Overflow'))
 
 const wait = (what: string) => <div className="grid h-full place-items-center text-sm text-slate-500">Loading {what}…</div>
+
+function WindowsMdtWorkspace() {
+ const me=useStore(s=>s.me)
+ const [error,setError]=useState('')
+ useEffect(()=>{
+  if(me?.role==='field')return
+  let active=true
+  api.post<{session:{role:string}}>('/auth/module',{module:'mdt'}).then(async r=>{
+   if(r.session.role!=='field')throw new Error('Security officer (MDT) duty is required for the Windows app. Ask an administrator to enable it.')
+   await checkMe()
+  }).catch(e=>{if(active)setError(errText(e))})
+  return()=>{active=false}
+ },[me?.username,me?.role])
+ if(me?.role!=='field')return <div className="grid h-full place-items-center p-6"><div className="space-y-3 text-sm"><p>{error||'Opening your MDT officer session…'}</p>{error&&<button className="btn" onClick={()=>signOut()}>Sign out</button>}</div></div>
+ return <Routes>
+  <Route path="/mdt/reports" element={<Rms />} />
+  <Route path="/mdt/reports/:number" element={<Rms />} />
+  <Route path="/mdt" element={<Mdt />} />
+  <Route path="*" element={<Navigate to="/mdt" replace />} />
+ </Routes>
+}
 
 /** Home is the workspace of the duty signed in: call entry for a call-taker, the console with its own
  * discipline for a police, fire or EMS dispatcher, administration or records for those duties. */
@@ -65,7 +88,7 @@ export default function App() {
     if ((duty === 'police' || duty === 'fire' || duty === 'ems') && !sessionStorage.getItem('bd.lens')) store.setLens([duty])
   }, [duty])
   // A paged responder's answer link: no sign-in.
-  if (window.location.hash.startsWith('#/r/')) return <Suspense fallback={wait('the page')}><PageReply /></Suspense>
+  if (!isWindowsMdt() && window.location.hash.startsWith('#/r/')) return <Suspense fallback={wait('the page')}><PageReply /></Suspense>
   if (!checked) return <div className="grid h-full place-items-center text-sm text-slate-500">Starting…</div>
   return (
     <Tooltip.Provider delayDuration={300}>
@@ -74,7 +97,9 @@ export default function App() {
       {me && <KeyTestHost />}
       {me && <SignOffBlocked />}
       <WorkspaceShell>
-      {me?.role === 'field' ? (
+      {isWindowsMdt() && me ? (
+        <WindowsMdtWorkspace />
+      ) : me?.role === 'field' ? (
         <Routes>
           <Route path="/rms" element={<Rms />} />
           <Route path="/rms/:number" element={<Rms />} />

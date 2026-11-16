@@ -184,16 +184,16 @@ export default function Mdt() {
           <LocateFixed size={12} aria-hidden /> GPS {!sendGps ? 'off' : gps === 'on' ? isWindowsMdt()&&!desktopState().connected?'recording offline':'sending' : gps === 'denied' ? 'blocked: allow location' : gps === 'none' ? 'not available' : 'waiting'}
         </span>
         <button className="btn" onClick={() => setSendGps(v => !v)}>{sendGps ? 'Stop GPS' : 'Share device GPS'}</button>
-        {me?.role !== 'field' && <Link to="/admin" className="btn">Administration</Link>}
+        {!isWindowsMdt() && me?.role !== 'field' && <Link to="/admin" className="btn">Administration</Link>}
         <span className="ml-auto font-mono text-xl tnum">{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
         {inc && <button className="btn h-9" onClick={async () => {
-          if (inc.reports?.[0]) return nav(`/rms/${inc.reports[0]}`)
+          if (inc.reports?.[0]) return nav(`${isWindowsMdt()?'/mdt/reports':'/rms'}/${inc.reports[0]}`)
           try {
             const r = await api.post<{ report: { number: string } }>('/rms/reports', { incident: inc.number, offenses: [], people: [], property: [], vehicles: [] })
-            nav(`/rms/${r.report.number}`)
+            nav(`${isWindowsMdt()?'/mdt/reports':'/rms'}/${r.report.number}`)
           } catch (e) { toast.error(errText(e)) }
         }}><FileText size={14} aria-hidden /> Report</button>}
-        <Link to="/rms" className="btn h-9">My reports</Link>
+        <Link to={isWindowsMdt()?'/mdt/reports':'/rms'} className="btn h-9">My reports</Link>
         <button className="btn h-11" onClick={()=>setLookupOpen(true)}><Search size={17} aria-hidden /> Persons & vehicles</button>
         {(m.roster?.length ?? 0) > 0 && <button className="btn h-9" onClick={() => setCrewOpen(true)}><HardHat size={14} aria-hidden /> Crew {u!.crew?.length ? `(${u!.crew.length})` : ''}</button>}
         <span className="text-xs text-slate-500">{me?.name}</span>

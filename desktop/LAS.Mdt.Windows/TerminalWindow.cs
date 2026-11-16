@@ -63,15 +63,15 @@ internal sealed class TerminalWindow : Window
    var core=terminal.CoreWebView2;core.Settings.AreDevToolsEnabled=false;core.Settings.AreDefaultContextMenusEnabled=false;core.Settings.IsStatusBarEnabled=false;
    core.AddWebResourceRequestedFilter(AppPaths.Origin+"/*",CoreWebView2WebResourceContext.All);
    core.WebResourceRequested+=ResourceRequested;
-   core.NavigationStarting+=(_,e)=>{if(!TrustedOrigin(e.Uri)){e.Cancel=true;OpenExternal(e.Uri);}};
-   core.NewWindowRequested+=(_,e)=>{e.Handled=true;if(TrustedOrigin(e.Uri))core.Navigate(e.Uri);else OpenExternal(e.Uri);};
+   core.NavigationStarting+=(_,e)=>{if(!TerminalPage(e.Uri)){e.Cancel=true;if(!TrustedOrigin(e.Uri))OpenExternal(e.Uri);}};
+   core.NewWindowRequested+=(_,e)=>{e.Handled=true;if(TerminalPage(e.Uri))core.Navigate(e.Uri);else if(!TrustedOrigin(e.Uri))OpenExternal(e.Uri);};
    core.PermissionRequested+=(_,e)=>{if(TrustedOrigin(e.Uri)&&e.PermissionKind==CoreWebView2PermissionKind.Geolocation)e.State=CoreWebView2PermissionState.Allow;};
    core.WebMessageReceived+=Bridge;
    await core.AddScriptToExecuteOnDocumentCreatedAsync("""
     if(window.top===window && location.origin==='https://cad.lakesareasecurity.com' && (location.pathname==='/'||location.pathname==='/index.html')){
      const waiting=new Map();let seq=0;
      window.chrome.webview.addEventListener('message',e=>{const r=e.data;if(!r||!waiting.has(r.id))return;const p=waiting.get(r.id);waiting.delete(r.id);clearTimeout(p.timer);r.error?p.reject(new Error(r.error)):p.resolve(r.value);});
-     window.lasDesktop={version:'1.0.1',call:(op,key,value)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{waiting.delete(id);reject(new Error('Windows storage did not respond. Keep this work open and retry.'));},op==='downloadMap'?900000:120000);waiting.set(id,{resolve,reject,timer});window.chrome.webview.postMessage({id,op,key,value});})};
+     window.lasDesktop={version:'1.0.2',call:(op,key,value)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{waiting.delete(id);reject(new Error('Windows storage did not respond. Keep this work open and retry.'));},op==='downloadMap'?900000:120000);waiting.set(id,{resolve,reject,timer});window.chrome.webview.postMessage({id,op,key,value});})};
     }
     """);
    core.Navigate(AppPaths.Origin+"/#/mdt");
@@ -82,6 +82,14 @@ internal sealed class TerminalWindow : Window
   catch(Exception ex){status.Text="Could not start the terminal: "+ex.Message;}
  }
  private static bool TrustedOrigin(string value)=>Uri.TryCreate(value,UriKind.Absolute,out var u)&&u.Scheme=="https"&&u.Host=="cad.lakesareasecurity.com"&&u.Port==443;
+ internal static bool TerminalPage(string value){
+  if(!TrustedOrigin(value))return false;
+  var u=new Uri(value);
+  if(IsAttachment(u.AbsolutePath))return true;
+  if(u.AbsolutePath!="/"&&u.AbsolutePath!="/index.html")return false;
+  var route=u.Fragment;
+  return route is "" or "#" or "#/" or "#/mdt" or "#/mdt/reports" || System.Text.RegularExpressions.Regex.IsMatch(route,"^#/mdt/reports/[A-Za-z0-9_-]+$");
+ }
  private static void OpenExternal(string value){if(Uri.TryCreate(value,UriKind.Absolute,out var u)&&u.Scheme=="https")Process.Start(new ProcessStartInfo(value){UseShellExecute=true});}
  private async void ResourceRequested(object? sender,CoreWebView2WebResourceRequestedEventArgs e)
  {

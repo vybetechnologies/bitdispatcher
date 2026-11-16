@@ -46,5 +46,7 @@ internal static class NativeSelfTest
   using(var map=new MapHost()){var glyph=map.Request("/api/map/fonts/Noto%20Sans%20Regular/0-255.pbf",null).GetAwaiter().GetResult();if(glyph.Status!=200||string.IsNullOrEmpty(glyph.Data))throw new Exception("Offline map engine IPC failed.");}
   if(!Updates.TrustedDownload(new Uri("https://github.com/vybetechnologies/bitdispatcher/releases/download/mdt-v1.0.0/LAS-MDT-Setup-x64.exe")))throw new Exception("Trusted release rejected.");
   if(Updates.TrustedDownload(new Uri("https://example.com/installer.exe")))throw new Exception("Untrusted updater host accepted.");
+  foreach(var path in new[]{"/#/mdt","/#/mdt/reports","/#/mdt/reports/OFFLINE-test","/"})if(!TerminalWindow.TerminalPage(AppPaths.Origin+path))throw new Exception("MDT navigation rejected.");
+  foreach(var path in new[]{"/#/admin","/#/console","/#/taker","/#/rms","/api/state","/#/mdt-other"})if(TerminalWindow.TerminalPage(AppPaths.Origin+path))throw new Exception("Another module was allowed in the Windows MDT.");
  }
 }

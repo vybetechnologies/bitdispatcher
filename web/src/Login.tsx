@@ -4,6 +4,7 @@ import { renderSVG } from 'uqr'
 import { api, ApiError, errText } from './api'
 import { checkMe } from './store'
 import DesktopDownload from './DesktopDownload'
+import { isWindowsMdt } from './desktop'
 import { Logo } from './ui'
 import { cx } from './util'
 import type { Duty, Need } from './types'
@@ -79,7 +80,7 @@ export default function Login() {
     setError('')
     try {
       await api.post('/auth/login', {
-        username, password, code, duty: duty ?? '', training, exercise: training ? exercise.trim() : '',
+        username, password, code, duty: isWindowsMdt() ? 'field' : duty ?? '', training, exercise: training ? exercise.trim() : '',
         workstation: localStorage.getItem('bd.ws') ?? '', console: webPosition(), unit: unit.trim().toUpperCase(),
       })
       if (unit) localStorage.setItem('bd-unit', unit.trim().toUpperCase())
@@ -89,7 +90,8 @@ export default function Login() {
         const n = err.data.need as Need
         setNeed(n)
         if (err.status !== 202) setError(err.message)
-        if (n.duties?.length === 1) return attempt(n.duties[0] as Duty)
+        if (isWindowsMdt() && n.duties?.length && !n.duties.includes('field')) setError('This Windows app requires Security officer (MDT) access. Ask an administrator to enable it for your account.')
+        if (!isWindowsMdt() && n.duties?.length === 1) return attempt(n.duties[0] as Duty)
       } else {
         setError(errText(err))
       }
@@ -106,7 +108,7 @@ export default function Login() {
   return (
     <div className="grid h-full place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_top,var(--color-slate-900),var(--color-slate-950))] p-6">
       <div className="w-full max-w-md space-y-3">
-        {demo && !askingDuty && (
+        {demo && !isWindowsMdt() && !askingDuty && (
           <section aria-labelledby="demo-h" className="panel rounded-xl border-l-4 border-l-sky-400 p-4 shadow-2xl">
             <h2 id="demo-h" className="text-sm font-semibold text-slate-50">Try it with the demo account</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
@@ -181,7 +183,7 @@ export default function Login() {
               <legend className="label">What are you working?</legend>
               <p className="mb-2 text-xs text-slate-400">Signed in as <b className="text-slate-200">{username}</b>{ws && <> at <b className="text-slate-200">{ws}</b></>}. Your screens and what you may do follow the duty you choose.</p>
               <div className="grid grid-cols-2 gap-1.5">
-                {need!.duties!.map((d, i) => (
+                {need!.duties!.filter(d=>!isWindowsMdt()||d==='field').map((d, i) => (
                   <button key={d} type="button" autoFocus={d === (need!.last || need!.duties![0])} disabled={busy}
                     className={cx('btn justify-start py-2 text-left text-sm', d === (need!.last || need!.duties![0]) && 'ring-1 ring-sky-400')}
                     onClick={() => attempt(d as Duty)}>
@@ -220,7 +222,7 @@ export default function Login() {
           {enrolOpen && <Enrol onDone={(name) => { setWs(name); setEnrolOpen(false) }} />}
         </form>
       </div>
-      <DutyKeys need={need} onPick={(d) => attempt(d)} />
+      {!isWindowsMdt()&&<DutyKeys need={need} onPick={(d) => attempt(d)} />}
     </div>
   )
 }

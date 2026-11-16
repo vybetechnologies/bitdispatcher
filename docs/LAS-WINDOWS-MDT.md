@@ -4,6 +4,8 @@ Independent Windows 10/11 x64 application: WPF window, native menu and status ba
 
 ## Offline operation
 
+The Windows application is MDT-only. Sign-in requests the Security officer (field) duty; previously saved broader sessions must switch to that duty before opening the terminal. Other module routes redirect to MDT, the native window blocks other CAD module navigation, and no module switcher or administration links appear. Officer reports remain within `/mdt/reports`. Browser module access and account grants are unchanged.
+
 Sign in online with an account's assigned MDT unit once. The app downloads authorized local person/vehicle records (including normal officer-safety flags and full existing person fields), call details, messages/BOLOs, report metadata and own drafts. The recorded map database is exported consistently from CAD and verified with SHA-256. The same Go map engine then supplies offline vector tiles, fonts, road routes, address search/reverse lookup and saved road closures.
 
 A visible Windows connection/outbox bar identifies offline data. Status changes, mark-outs, call notes, messages/read receipts, BOLO open/ack receipts, own-unit attachment/crew changes, GPS samples, photos/files and report drafts are stored durably in a Windows DPAPI-protected outbox before transmission. Reports can have temporary OFFLINE identifiers until the server assigns their permanent number. Saved work and sign-in survive application updates.

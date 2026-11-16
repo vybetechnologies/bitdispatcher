@@ -8,10 +8,17 @@ const fixture=vi.hoisted(()=>({me:{username:'owner',name:'Owner',role:'field',du
 vi.mock('./store',()=>({useStore:(selector:(s:typeof fixture)=>unknown)=>selector(fixture)}))
 vi.mock('./offline',()=>({pauseSnapshots:vi.fn(),resumeSnapshots:vi.fn(),clearSnapshot:vi.fn().mockResolvedValue(undefined)}))
 vi.mock('sonner',()=>({toast:{error:vi.fn()}}))
-afterEach(()=>{cleanup();vi.restoreAllMocks();localStorage.clear()})
+afterEach(()=>{cleanup();delete window.lasDesktop;vi.restoreAllMocks();localStorage.clear()})
 function Route(){return <p data-testid="route">{useLocation().pathname}</p>}
 const list=[{id:'mdt',label:'MDT',path:'/mdt'},{id:'rms',label:'RMS / Records',path:'/rms'},{id:'admin',label:'Administration',path:'/admin'}]
 describe('shared module switcher',()=>{
+ it('never offers module switching in the Windows MDT app',()=>{
+  window.lasDesktop={version:'1.0.2',call:vi.fn()}
+  const get=vi.spyOn(api,'get')
+  render(<MemoryRouter><ModuleSwitcher /></MemoryRouter>)
+  expect(screen.queryByLabelText('Switch module')).toBeNull()
+  expect(get).not.toHaveBeenCalled()
+ })
  it('does not render a toggle for one granted module',async()=>{
   const get=vi.spyOn(api,'get').mockResolvedValue({modules:[list[0]]})
   render(<MemoryRouter initialEntries={['/mdt']}><ModuleSwitcher /></MemoryRouter>)

@@ -1,4 +1,5 @@
 import DesktopStatus from './DesktopStatus'
+import { isWindowsMdt } from './desktop'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Layers3, Check } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -19,6 +20,10 @@ export function activeModule(path:string,role?:string) {
 }
 const TRANSITION='las.module-transition'
 export default function ModuleSwitcher() {
+ if(isWindowsMdt())return null
+ return <BrowserModuleSwitcher />
+}
+function BrowserModuleSwitcher() {
  const me=useStore(s=>s.me)
  const location=useLocation(),navigate=useNavigate()
  const [modules,setModules]=useState<WorkspaceModule[]>([])

@@ -11,7 +11,7 @@ export const parts: { title: string; intro: string; ids: string[] }[] = [
     ids: ['start', 'install', 'signin', 'taker', 'resources', 'console', 'layout', 'working-agency', 'console-route', 'dispatching', 'screens', 'screen-calls', 'screen-stations', 'screen-police', 'screen-units', 'screen-map', 'screen-incident', 'calls', 'incidents', 'recommend', 'advisory', 'moveup', 'units', 'map', 'road-closures', 'cameras', 'photos', 'views', 'messages', 'inbox', 'search', 'alerts', 'station', 'cad-to-cad', 'files', 'command', 'keys'] },
   { title: 'Locations, people, requests and review', intro: 'The place and how a location is settled, flags, persons and vehicles, NCIC requests, Street View, key tests, and the supervisor\u2019s review.',
     ids: ['place', 'flags', 'persons-vehicles', 'requests', 'streetview', 'keytest', 'supervisor', 'admin-callentry', 'admin-critical', 'admin-pip'] },
-  { title: 'In the field', intro: 'The mobile data terminal a crew uses from the vehicle.', ids: ['mdt', 'rms', 'ncic'] },
+  { title: 'In the field', intro: 'The mobile data terminal a crew uses from the vehicle.', ids: ['mdt', 'mdt-reports', 'rms', 'ncic'] },
   { title: 'Supervising', intro: 'Reports built from the ledger, and the ledger itself.', ids: ['board', 'reports', 'admin-advisory', 'ledger', 'records', 'admin-disclosure'] },
   { title: 'What 911 centres asked for', intro: 'Transcripts and translation, callers grouped and screened, crash data, drones, care for the people, training, quality review, outages and line attacks.',
     ids: ['transcript', 'translation', 'caller-location', 'location-link', 'grouping', 'nonemergency', 'admin-intake', 'crash', 'drones', 'admin-drones', 'radio-text', 'summary', 'care', 'breaks', 'training', 'exercises', 'quality', 'offline', 'continuity', 'overflow', 'tdos', 'hooks'] },
@@ -22,6 +22,9 @@ export const parts: { title: string; intro: string; ids: string[] }[] = [
 ]
 
 export const manual: Article[] = [
+  {id:'mdt-reports',title:'Windows MDT officer reports',route:'/mdt/reports',keys:'windows mdt officer report draft offline',body:`The Windows app opens only the MDT officer workspace. **My reports** opens your officer reports inside the terminal; **MDT** returns to your call, status, map and emergency controls. Administration, dispatch, call intake and module switching are available through the browser according to your account permissions.
+
+Report drafts are saved to the protected device outbox during an outage. Reconnect to sync them and to submit reports. Pending and conflicting work remains visible in the outbox.`},
   { id: 'las-agency', title: 'Lakes Area Security configuration', route: '/admin/las', keys: 'LAS private security branding setup', body: `Lakes Area Security Corporation uses CAD, MDT and operational records for private security in North Dakota.
 
 The LAS configuration page previews private-security call types, run cards and unit types. An administrator can apply it only on an unused pilot with an unchanged upstream or LAS catalog. Existing numbering, map, MFA, users, GIS and cameras are preserved. Operational systems require individual reviewed changes. Back up the data volume before applying.
