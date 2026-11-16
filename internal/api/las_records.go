@@ -235,12 +235,28 @@ func (s *Server) lasRecordRoutes() {
 				items = append(items, v)
 			}
 		})
+		providerMessage := ""
+		if len(items) == 0 && !strings.HasPrefix(q, "LASR") && !strings.HasPrefix(q, "LASP") {
+			agency := ""
+			s.Eng.Read(func(st *cad.State) {
+				sc := st.AccessScope(se.Username, se.Console, se.Duty)
+				if se.Role != auth.Admin && sc != nil {
+					for id := range sc {
+						agency = id
+						break
+					}
+				}
+			})
+			records, message := s.enformionFallback(r.Context(), a, b.Query, "", agency)
+			items = append(items, records...)
+			providerMessage = message
+		}
 		sort.Slice(items, func(i, j int) bool { return items[i].Updated.After(items[j].Updated) })
 		if len(items) > 25 {
 			items = items[:25]
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		writeJSON(w, 200, map[string]any{"items": items})
+		writeJSON(w, 200, map[string]any{"items": items, "providerMessage": providerMessage})
 	})
 	s.handle("GET /api/admin/las-records", auth.Admin, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
 		items := []cad.LASRecord{}

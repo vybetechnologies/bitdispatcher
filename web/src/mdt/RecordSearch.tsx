@@ -6,7 +6,7 @@ import { cx } from '../util'
 import type { Person } from '../requests/types'
 
 type Hit = { flags?:{id:string;title:string;warning:string;instruction:string}[];person?:Person;incidents?:{incident:string;role:string}[];source?:string; record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
-type Results = { kind:'person'|'vehicle'; items:Hit[]; more:boolean; source:string; searchedAt:string }
+type Results = { providerMessage?:string; kind:'person'|'vehicle'; items:Hit[]; more:boolean; source:string; searchedAt:string }
 export function personCautionAnnouncement(result:Results):string {
  if(result.kind!=='person')return ''
  const cautions=result.items.filter(h=>h.safetyConcern||h.person?.safety||h.flags?.length)
@@ -47,7 +47,7 @@ export default function RecordSearch({onClose,onCaution}:{onClose:()=>void;onCau
     <button role="tab" aria-selected={kind==='person'} aria-controls="mdt-lookup-panel" id="mdt-person-tab" disabled={busy} onClick={()=>changeKind('person')} className={cx('btn min-h-11 flex-1 justify-center',kind==='person'&&'border-amber-500/60 bg-amber-500/15 text-amber-200')}><UserRound size={17} aria-hidden /> Persons</button>
     <button role="tab" aria-selected={kind==='vehicle'} aria-controls="mdt-lookup-panel" id="mdt-vehicle-tab" disabled={busy} onClick={()=>changeKind('vehicle')} className={cx('btn min-h-11 flex-1 justify-center',kind==='vehicle'&&'border-amber-500/60 bg-amber-500/15 text-amber-200')}><Car size={17} aria-hidden /> Vehicles</button>
    </div>
-   <p className="text-xs leading-relaxed text-slate-400">LAS CAD records only. Searches are logged. These are possible record matches, not identity verification, warrant checks, or DMV/NCIC returns.</p>
+   <p className="text-xs leading-relaxed text-slate-400">LAS records are searched first, then EnformionGO on a person-search miss. New provider matches are saved locally. Searches are logged. These are possible record matches, not identity verification, warrant checks, or DMV/NCIC returns.</p>
    <div id="mdt-lookup-panel" role="tabpanel" aria-labelledby={kind==='person'?'mdt-person-tab':'mdt-vehicle-tab'}>
     <form onSubmit={search} className="space-y-3">
      <fieldset disabled={busy} className="space-y-3">
@@ -69,9 +69,10 @@ export default function RecordSearch({onClose,onCaution}:{onClose:()=>void;onCau
      </fieldset>
     </form>
    </div>
-   {busy&&<p role="status" className="text-sm text-slate-300">Searching LAS records…</p>}
+   {busy&&<p role="status" className="text-sm text-slate-300">Searching LAS records, then EnformionGO if needed…</p>}
    {error&&<p role="alert" className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">{error}</p>}
    {result&&<section aria-label="Search results" className="space-y-3">
+    {result.providerMessage&&<p role="status" className="rounded border border-amber-800/50 bg-amber-950/10 p-3 text-sm text-amber-200">{result.providerMessage}</p>}
     <p role="status" className="text-sm text-slate-300">{result.items.length===0?'No matching LAS records.':`${result.items.length}${result.more?'+':''} matching records`} <span className="text-xs text-slate-500">· {new Date(result.searchedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></p>
     {result.items.length===0&&<p className="text-xs text-slate-400">Try another spelling or refine the identifiers. No match does not establish that a person or vehicle has no history.</p>}
     {result.more&&<p className="text-xs text-amber-200">Showing the newest 50 matches. Add a birth date, plate state, or more characters to narrow the search.</p>}

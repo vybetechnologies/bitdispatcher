@@ -146,11 +146,13 @@ func (s *Server) mdtLookupRoutes() {
 		}
 		hits := []mdtLookupHit{}
 		now := s.Eng.Now()
+		agency := ""
 		s.Eng.Read(func(st *cad.State) {
 			own := st.Units[unit]
 			if own == nil {
 				return
 			}
+			agency = own.Agency
 			for _, in := range st.Incidents {
 				if in.Agency != "" && !strings.EqualFold(in.Agency, own.Agency) {
 					continue
@@ -213,15 +215,30 @@ func (s *Server) mdtLookupRoutes() {
 							refs = append(refs, ref)
 						}
 					}
-					hits = append(hits, mdtLookupHit{Flags: flags, Person: &p, Incidents: refs, Source: "LAS directory", Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety || len(flags) > 0})
+					hits = append(hits, mdtLookupHit{Flags: flags, Person: &p, Incidents: refs, Source: r.Source, Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety || len(flags) > 0})
 				} else {
 					if plate != "" && !strings.Contains(lookupID(r.Plate), plate) || vin != "" && !strings.Contains(lookupID(r.VIN), vin) || q.State != "" && !strings.EqualFold(q.State, r.State) {
 						continue
 					}
-					hits = append(hits, mdtLookupHit{Source: "LAS directory", Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
+					hits = append(hits, mdtLookupHit{Source: r.Source, Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
 				}
 			}
 		})
+		providerMessage := ""
+		if q.Kind == "person" && len(hits) == 0 {
+			records, message := s.enformionFallback(r.Context(), a, q.Name, q.DOB, agency)
+			providerMessage = message
+			for _, record := range records {
+				p := cad.LASRecordPerson(record)
+				flags := []*cad.Flag{}
+				s.Eng.Read(func(st *cad.State) {
+					for _, f := range st.LASPersonFlags(record.ID, p, now) {
+						flags = append(flags, st.FlagFor(f, cad.DutyOf(a), a.Role))
+					}
+				})
+				hits = append(hits, mdtLookupHit{Person: &p, Flags: flags, Source: record.Source, Record: record.ID, Seen: record.Updated, Name: record.Name, DOB: record.DOB, Safety: record.Safety || len(flags) > 0})
+			}
+		}
 		sort.Slice(hits, func(i, j int) bool {
 			if hits[i].Seen.Equal(hits[j].Seen) {
 				if hits[i].Incident == hits[j].Incident {
@@ -246,6 +263,6 @@ func (s *Server) mdtLookupRoutes() {
 		hash := sha256.Sum256(encoded)
 		s.Eng.Record(a, cad.EvSearched, map[string]any{"kind": "mdt-local-" + q.Kind, "unit": unit, "purpose": q.Purpose, "fields": fields, "queryHash": fmt.Sprintf("%x", hash), "results": len(hits), "more": more})
 		w.Header().Set("Cache-Control", "no-store")
-		writeJSON(w, 200, map[string]any{"kind": q.Kind, "items": hits, "more": more, "source": "LAS CAD records", "searchedAt": now.UTC()})
+		writeJSON(w, 200, map[string]any{"kind": q.Kind, "items": hits, "more": more, "source": "LAS CAD records", "providerMessage": providerMessage, "searchedAt": now.UTC()})
 	})
 }

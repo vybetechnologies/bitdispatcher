@@ -93,6 +93,21 @@ func (e *Engine) SaveLASRecords(a Actor, records []LASRecord, importing bool) ([
 	if a.Role != "admin" {
 		return nil, 0, fmt.Errorf("an administrator manages LAS records")
 	}
+	return e.saveLASRecords(a, records, importing)
+}
+
+// ImportEnformionPeople is a create-only ingestion command, not an administrator
+// privilege escalation. The authenticated search actor remains on the ledger.
+func (e *Engine) ImportEnformionPeople(a Actor, records []LASRecord) ([]LASRecord, int, error) {
+	for _, r := range records {
+		if r.ID != "" || r.Kind != "person" || r.Source != "EnformionGO" || r.ExternalID == "" || r.Person == nil || r.Safety || r.Person.Safety || r.Person.SafetyNote != nil || len(r.FlagIDs) != 0 {
+			return nil, 0, fmt.Errorf("invalid Enformion person import")
+		}
+	}
+	return e.saveLASRecords(a, records, true)
+}
+
+func (e *Engine) saveLASRecords(a Actor, records []LASRecord, importing bool) ([]LASRecord, int, error) {
 	if len(records) == 0 || len(records) > 500 {
 		return nil, 0, fmt.Errorf("save between 1 and 500 records")
 	}

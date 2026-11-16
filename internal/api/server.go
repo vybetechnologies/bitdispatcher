@@ -57,6 +57,8 @@ type Integrations struct {
 
 // Server is the API.
 type Server struct {
+	enformionMu    sync.Mutex   // serialize local-miss provider requests and ingestion
+	enformionHTTP  *http.Client // test override; production uses a bounded, no-redirect client
 	weather        weatherCache
 	LAS            bool       // private-security runtime; never inferred from a mutable agency name
 	enrol          enrolCodes // one-time workstation enrolment codes
