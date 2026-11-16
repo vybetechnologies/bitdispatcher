@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Volume2, VolumeX, RotateCcw } from 'lucide-react'
+import { Volume2, VolumeX, RotateCcw, Info } from 'lucide-react'
 import type { MDTView } from './Mdt'
 import type { CommView } from '../types'
 import { statusMeta } from '../util'
+import { Modal } from '../ui'
 import type { WeatherFeature } from '../WeatherAlerts'
 
 export type Announcement = { id: string; text: string; priority: number }
@@ -162,17 +163,19 @@ export default function MdtVoice({ m, messages, weather = [],lookupCaution, conn
     return()=>{window.removeEventListener('bd:locked',cancel);window.removeEventListener('bd:signedout',cancel);attemptedDefault.current=false;off()}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
-  return <div className="flex flex-wrap items-center gap-2">
+  return <div className="mdt-voice" role="group" aria-label="Voice announcements">
     <button className={`btn h-11 ${enabled||waitingForTap?'border-amber-400 text-amber-200':''}`} aria-pressed={enabled||waitingForTap} disabled={!supported} onClick={()=>enabled?off():void enable()}>{enabled||waitingForTap?<Volume2 size={17}/>:<VolumeX size={17}/>} {waitingForTap?'Voice on · Enable audio':`Voice ${enabled?'on':'off'}`}</button>
     {enabled&&<><button className="btn h-11" aria-label="Repeat last voice announcement" onClick={()=>{stop();enqueue([{id:'repeat',text:last.current||'No previous announcement.',priority:1}])}}><RotateCcw size={16}/> Repeat</button><button className="btn h-11" onClick={stop}>Stop speaking</button></>}
     <button className="btn h-9" aria-expanded={settings} onClick={()=>setSettings(v=>!v)}>Voice settings</button>
-    {(!supported||error)&&<span role="status" className="text-xs text-amber-200">{error||'Speech is unavailable in this browser.'}</span>}
-    {enabled&&!connected&&<span role="status" className="text-xs text-amber-200">Live call announcements paused · reconnecting</span>}
-    {settings&&<div className="panel flex w-full flex-wrap items-center gap-3 rounded p-3 text-sm">
+    {(!supported||error)&&<span role="status" title={error||'Speech is unavailable in this browser.'} className="mdt-voice-status"><Info size={15}/><span className="sr-only">{error||'Speech is unavailable in this browser.'}</span></span>}
+    {enabled&&!connected&&<span role="status" title="Live call announcements paused · reconnecting" className="mdt-voice-status"><Info size={15}/><span className="sr-only">Live call announcements paused · reconnecting</span></span>}
+    <Modal open={settings} onClose={()=>setSettings(false)} title="Voice settings"><div className="flex flex-col gap-4 text-sm">
+      {(!supported||error)&&<p role="status" className="text-amber-200">{error||'Speech is unavailable in this browser.'}</p>}
+      {enabled&&!connected&&<p role="status" className="text-amber-200">Live call announcements paused · reconnecting</p>}
       <label>Device voice <select className="input" value={voice} onChange={e=>setVoice(e.target.value)}><option value="">Default local English voice</option>{voices.map(v=><option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>)}</select></label>
       <label>Speed <input aria-label="Voice speed" type="range" min="0.75" max="1.4" step="0.05" value={rate} onChange={e=>setRate(Number(e.target.value))}/>{rate.toFixed(2)}×</label>
       <label>Volume <input aria-label="Voice volume" type="range" min="0.1" max="1" step="0.1" value={volume} onChange={e=>setVolume(Number(e.target.value))}/></label>
       <p className="w-full text-xs text-slate-400">Voice starts automatically. If the browser blocks audio, tap Voice on. Uses installed local voices; no microphone. Speech does not acknowledge messages.</p>
-    </div>}
+    </div></Modal>
   </div>
 }

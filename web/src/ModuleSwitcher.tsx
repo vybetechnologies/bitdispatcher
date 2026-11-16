@@ -19,11 +19,11 @@ export function activeModule(path:string,role?:string) {
  return 'cad'
 }
 const TRANSITION='las.module-transition'
-export default function ModuleSwitcher() {
+export default function ModuleSwitcher({compact=false}:{compact?:boolean}) {
  if(isWindowsMdt())return null
- return <BrowserModuleSwitcher />
+ return <BrowserModuleSwitcher compact={compact}/>
 }
-function BrowserModuleSwitcher() {
+function BrowserModuleSwitcher({compact}:{compact:boolean}) {
  const me=useStore(s=>s.me)
  const location=useLocation(),navigate=useNavigate()
  const [modules,setModules]=useState<WorkspaceModule[]>([])
@@ -69,8 +69,8 @@ function BrowserModuleSwitcher() {
  const current=modules.find(m=>m.id===activeModule(location.pathname,me?.role))
  if(modules.length<=1&&!busy)return null
  return <>
-  {modules.length>1&&<nav className="flex h-10 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-950 px-3 text-xs" aria-label="Workspace modules">
-   <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:inline">LAS Operations</span>
+  {modules.length>1&&<nav className={compact?'flex shrink-0 items-center text-xs':'flex h-10 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-950 px-3 text-xs'} aria-label="Workspace modules">
+   {!compact&&<span className="hidden text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:inline">LAS Operations</span>}
    <details ref={menu} className="relative" onKeyDown={e=>{if(e.key==='Escape'&&menu.current){menu.current.open=false;menu.current.querySelector('summary')?.focus()}}}>
     <summary aria-label="Switch module" className="btn flex h-7 cursor-pointer list-none items-center gap-2 border-amber-600/40 px-2.5 text-xs text-amber-200 [&::-webkit-details-marker]:hidden" onClick={()=>{void refresh().catch(()=>{})}}><Layers3 size={14} aria-hidden />{current?.label||'Modules'}<ChevronDown size={12} aria-hidden /></summary>
     <div className="panel absolute left-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-lg p-1 shadow-2xl" aria-label="Available modules">
@@ -78,7 +78,7 @@ function BrowserModuleSwitcher() {
      <p className="border-t border-slate-800 px-3 py-2 text-[10px] leading-relaxed text-slate-500">Other LAS tabs refresh when your working duty changes.</p>
     </div>
    </details>
-   <span className="ml-auto truncate text-[11px] text-slate-500">{me?.name}</span>
+   {!compact&&<span className="ml-auto truncate text-[11px] text-slate-500">{me?.name}</span>}
   </nav>}
   {busy&&<div role="status" className="fixed inset-0 z-[100] grid place-items-center bg-slate-950 text-sm text-slate-200">Switching workspace…</div>}
  </>
@@ -87,6 +87,8 @@ function BrowserModuleSwitcher() {
 /** Shared shell puts the same switcher above every signed-in screen without covering its controls. */
 export function WorkspaceShell({children}:{children:React.ReactNode}) {
  const me=useStore(s=>s.me)
+ const {pathname}=useLocation()
+ const terminal=pathname==='/mdt'||(me?.role==='field'&&!/^\/(rms|help)/.test(pathname))
  if(!me)return <>{children}</>
- return <div className="flex h-full min-h-0 flex-col"><ModuleSwitcher /><DesktopStatus/><div className="min-h-0 flex-1">{children}</div></div>
+ return <div className="flex h-full min-h-0 flex-col">{!terminal&&<ModuleSwitcher />}<DesktopStatus/><div className="min-h-0 flex-1">{children}</div></div>
 }

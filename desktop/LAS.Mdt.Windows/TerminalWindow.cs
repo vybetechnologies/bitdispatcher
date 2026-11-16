@@ -71,7 +71,7 @@ internal sealed class TerminalWindow : Window
     if(window.top===window && location.origin==='https://cad.lakesareasecurity.com' && (location.pathname==='/'||location.pathname==='/index.html')){
      const waiting=new Map();let seq=0;
      window.chrome.webview.addEventListener('message',e=>{const r=e.data;if(!r||!waiting.has(r.id))return;const p=waiting.get(r.id);waiting.delete(r.id);clearTimeout(p.timer);r.error?p.reject(new Error(r.error)):p.resolve(r.value);});
-     window.lasDesktop={version:'1.0.2',call:(op,key,value)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{waiting.delete(id);reject(new Error('Windows storage did not respond. Keep this work open and retry.'));},op==='downloadMap'?900000:120000);waiting.set(id,{resolve,reject,timer});window.chrome.webview.postMessage({id,op,key,value});})};
+     window.lasDesktop={version:'1.0.3',call:(op,key,value)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{waiting.delete(id);reject(new Error('Windows storage did not respond. Keep this work open and retry.'));},op==='downloadMap'?900000:120000);waiting.set(id,{resolve,reject,timer});window.chrome.webview.postMessage({id,op,key,value});})};
     }
     """);
    core.Navigate(AppPaths.Origin+"/#/mdt");

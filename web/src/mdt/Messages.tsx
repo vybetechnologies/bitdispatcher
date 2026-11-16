@@ -49,7 +49,7 @@ export default function MdtMessages({ unit, messages, unitParam }: { unit: strin
           <button className="btn h-11 bg-white px-4 text-base font-bold text-rose-700" onClick={() => { marked.current.add(urgent.id); api.post(`/mdt/message/${urgent.id}/read${unitParam}`).catch(() => {}) }}>Got it</button>
         </div>
       )}
-      <section className="rounded-lg border border-sky-900/70 bg-sky-950/20 p-2" aria-label="Messages">
+      <section className="mdt-card mdt-messages" aria-label="Messages">
         <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-sky-300">
           <MessageSquare size={12} aria-hidden /> Messages {unread.length > 0 && <span className="chip bg-sky-500 text-white">{unread.length} new</span>}
         </div>
@@ -63,12 +63,12 @@ export default function MdtMessages({ unit, messages, unitParam }: { unit: strin
             </li>
           ))}
         </ul>
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mdt-quick-replies mt-2 flex flex-wrap gap-1">
           {QUICK.map((q) => <button key={q} type="button" className="btn h-9 px-3 text-sm" onClick={() => send(q)}>{q}</button>)}
         </div>
-        <form className="mt-1 flex gap-1" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send(text.trim()) }}>
-          <input className="input h-11 w-28 font-mono text-sm uppercase" value={to} onChange={(e) => setTo(e.target.value.toUpperCase())} aria-label="To: DISPATCH or a unit" />
-          <input className="input h-11 text-base" placeholder="Message" value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} aria-label="Message" />
+        <form className="mdt-message-form" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send(text.trim()) }}>
+          <label htmlFor="mdt-message-to">To: DISPATCH or a unit</label><input id="mdt-message-to" className="input h-11 w-28 font-mono text-sm uppercase" value={to} onChange={(e) => setTo(e.target.value.toUpperCase())} aria-label="To: DISPATCH or a unit" />
+          <label htmlFor="mdt-message-text">Message</label><input id="mdt-message-text" className="input h-11 text-base" placeholder="Message" value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} aria-label="Message" />
           <button className="btn h-11 px-4" disabled={!text.trim()} aria-label="Send message"><Send size={16} aria-hidden /> Send</button>
         </form>
         {err && <p role="alert" className="mt-1 text-sm text-rose-300">{err}</p>}

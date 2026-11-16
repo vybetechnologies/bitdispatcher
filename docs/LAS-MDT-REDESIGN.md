@@ -1,0 +1,9 @@
+# Shared MDT redesign
+
+Implemented from the supplied `MDT UI Redesign.html` in the shared React MDT used by the browser and independent Windows application. The mockup's synthetic records, demo calls, mock controls and external Leaflet dependencies are not used in the operational application.
+
+The compact LAS header contains existing voice controls, searches, crew, reports and sign-out. Authorized browser module switching moves into the header; Windows retains its MDT-only navigation. Unit identity, GPS, statuses and mark-outs occupy the left rail; the existing MapLibre recorded map, routes, imagery and NWS feed remain in the center. Assignment details, safety flags/cautions, people and vehicles, files, premises/preplans, acknowledgements, notes, pending calls/self-attachment, BOLOs, bulletins, roads and unit messages occupy the right rail. Reports open a nonmodal slide-over and retain the full existing report editor. Zoom controls are added without changing map sources or routing.
+
+The two-second emergency control remains in a separate shrinking-disabled footer; narrow screens scroll the operational deck. Voice and GPS defaults, own-unit checks, offline journaling/replay, dispatch conflict protection and all server authorization are unchanged.
+
+Validation: frontend unit suite, TypeScript/production build, and `node e2e/mdt-redesign.mjs` from `web`. The isolated browser regression uses synthetic API responses only and checks browser/native modes at six viewport sizes (including 800x440), emergency visibility, horizontal overflow, module restrictions, reports, voice/search dialogs, mark-outs, assigned-call cautions and notes, zoom and NWS controls. It records screenshots under `docs/screenshots/mdt-redesign`; its map has no downloaded map data. Windows packaging additionally tests installation, update data preservation, protected storage and MDT navigation restrictions.

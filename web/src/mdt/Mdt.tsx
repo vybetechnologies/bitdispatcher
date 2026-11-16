@@ -10,12 +10,15 @@ import { api, errText } from '../api'
 import { isWindowsMdt, desktopState } from '../desktop'
 import { signOut, useStore } from '../store'
 import { Logo, StatusChip } from '../ui'
+import ModuleSwitcher from '../ModuleSwitcher'
+import './mdt.css'
 import PremiseBox from '../console/PremiseBox'
 import { ViewsButton } from '../views/PlaceViews'
 import MdtMessages from './Messages'
 import MdtBulletins from './Bulletins'
 import MdtRoads from './Roads'
 import RecordSearch from './RecordSearch'
+import MdtReports from './Reports'
 import MdtVoice from './Voice'
 import type { LookupCaution } from './Voice'
 import EmergencyButton from './EmergencyButton'
@@ -63,9 +66,11 @@ export default function Mdt() {
   const [gps, setGps] = useState<'off' | 'on' | 'denied' | 'none'>('off')
   const [route, setRoute] = useState<RouteView | null>(null)
   const now = useNow()
+  useEffect(()=>{document.body.classList.add('mdt-active');return()=>document.body.classList.remove('mdt-active')},[])
   const nav = useNavigate()
   const [crewOpen, setCrewOpen] = useState(false)
   const [lookupOpen, setLookupOpen] = useState(false)
+  const [reportsOpen,setReportsOpen]=useState(false)
   const [sendGps, setSendGps] = useState(true)
   const unitParam = ''
   const unitPicker = <span className="text-sm">Assigned MDT unit: {me?.mdtUnit || 'Unassigned'}</span>
@@ -166,57 +171,98 @@ export default function Mdt() {
   const next = NEXT[u!.status]
   const notes = (inc?.timeline ?? []).filter((e) => e.kind === 'note' || e.kind === 'priority-note' || e.kind === 'created').slice().reverse()
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="mdt-terminal">
       {me?.training && (
         <div role="status" className="bg-violet-600 px-3 py-1 text-center text-sm font-bold tracking-wide text-white">
           TRAINING{me.exercise ? ` · exercise ${me.exercise}` : ''} · nothing here reaches the live board
         </div>
       )}
-      <header className="flex max-h-[35dvh] shrink-0 flex-wrap items-center gap-3 overflow-y-auto border-b border-slate-800 bg-slate-900 px-3 py-2">
-        <Logo size={22} />
+      <header className="mdt-topbar" aria-label="MDT toolbar">
+        <div className="mdt-brand"><Logo size={28}/><span>LAS <b>OPERATIONS</b></span></div>
+        <ModuleSwitcher compact/>
+        <div className="mdt-toolbar-spacer"/>
         <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} lookupCaution={lookupCaution} connected={isWindowsMdt()||!err && stream === 'live'} />
-        {unitPicker}
+        <button className="btn" onClick={()=>setLookupOpen(true)}><Search size={15} aria-hidden/> Persons &amp; vehicles</button>
+        {(m.roster?.length ?? 0)>0&&<button className="btn" onClick={()=>setCrewOpen(true)}><HardHat size={15} aria-hidden/> Crew{u!.crew?.length ? ` (${u!.crew.length})` : ''}</button>}
+        <button className="mdt-reports-link" onClick={()=>setReportsOpen(true)} aria-expanded={reportsOpen}>My reports</button>
+        {!isWindowsMdt()&&me?.role!=='field'&&<Link to="/admin" className="mdt-reports-link">Administration</Link>}
         <DesktopDownload compact/>
-        <span className="font-mono text-2xl font-black tracking-tight">{u!.id}</span>
-        <StatusChip status={u!.status} />
-        <span className="text-xs text-slate-400">{u!.covering ? `covering ${u!.covering}` : m.station?.name}</span>
-        <span className={cx('chip ml-2', gps === 'on' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')} title="Position from this device">
-          <LocateFixed size={12} aria-hidden /> GPS {!sendGps ? 'off' : gps === 'on' ? isWindowsMdt()&&!desktopState().connected?'recording offline':'sending' : gps === 'denied' ? 'blocked: allow location' : gps === 'none' ? 'not available' : 'waiting'}
-        </span>
-        <button className="btn" onClick={() => setSendGps(v => !v)}>{sendGps ? 'Stop GPS' : 'Share device GPS'}</button>
-        {!isWindowsMdt() && me?.role !== 'field' && <Link to="/admin" className="btn">Administration</Link>}
-        <span className="ml-auto font-mono text-xl tnum">{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-        {inc && <button className="btn h-9" onClick={async () => {
-          if (inc.reports?.[0]) return nav(`${isWindowsMdt()?'/mdt/reports':'/rms'}/${inc.reports[0]}`)
-          try {
-            const r = await api.post<{ report: { number: string } }>('/rms/reports', { incident: inc.number, offenses: [], people: [], property: [], vehicles: [] })
-            nav(`${isWindowsMdt()?'/mdt/reports':'/rms'}/${r.report.number}`)
-          } catch (e) { toast.error(errText(e)) }
-        }}><FileText size={14} aria-hidden /> Report</button>}
-        <Link to={isWindowsMdt()?'/mdt/reports':'/rms'} className="btn h-9">My reports</Link>
-        <button className="btn h-11" onClick={()=>setLookupOpen(true)}><Search size={17} aria-hidden /> Persons & vehicles</button>
-        {(m.roster?.length ?? 0) > 0 && <button className="btn h-9" onClick={() => setCrewOpen(true)}><HardHat size={14} aria-hidden /> Crew {u!.crew?.length ? `(${u!.crew.length})` : ''}</button>}
-        <span className="text-xs text-slate-500">{me?.name}</span>
-        <button className="btn" onClick={signOut} aria-label="Sign out"><LogOut size={14} aria-hidden /></button>
+        <time className="mdt-clock">{new Date(now).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}</time>
+        <span className="mdt-officer">{me?.name}</span>
+        <button className="btn mdt-signout" onClick={signOut} aria-label="Sign out"><LogOut size={14} aria-hidden/><span>Sign out</span></button>
       </header>
       {m.emergency && !m.emergency.ackedBy && (
         <div role="alert" className="animate-pulse bg-rose-700 px-3 py-2 text-center text-lg font-black tracking-wide">{m.emergency.key.startsWith('OFFLINE-')?'EMERGENCY QUEUED — NOT SENT. USE RADIO / PHONE':'EMERGENCY SENT'} {clock(m.emergency.raised, now)} · {m.emergency.key.startsWith('OFFLINE-')?'waiting for connection':'waiting for dispatch to acknowledge'}</div>
       )}
       {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} onCaution={text=>setLookupCaution(text?{id:++lookupRun.current,text}:null)} />}
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(24rem,36rem)_1fr]">
-        <section className="flex min-h-0 flex-col gap-2 overflow-y-auto p-3">
+      {reportsOpen&&<MdtReports onClose={()=>setReportsOpen(false)}/>}
+      <main className="mdt-deck">
+        <aside className="mdt-left" aria-label="Your unit and status">
+          <section className="mdt-card mdt-unit-card">
+            <h2 className="mdt-card-title">Your unit</h2>
+            <div className="mdt-unit-assigned">{unitPicker}</div>
+            <div className="mdt-unit-number">{u!.id}</div>
+            <div className="mdt-unit-row"><StatusChip status={u!.status}/><span className="mdt-status-word">{statusMeta(u!.status).label}</span></div>
+            <p className="mdt-station">{u!.covering ? `covering ${u!.covering}` : m.station?.name||m.settings.agency}</p>
+            <div className="mdt-unit-row"><span className={cx('mdt-gps',gps==='on'&&sendGps&&'mdt-gps-on')}><LocateFixed size={12} aria-hidden/> GPS {!sendGps?'off':gps==='on'?isWindowsMdt()&&!desktopState().connected?'recording offline':'sending':gps==='denied'?'blocked: allow location':gps==='none'?'not available':'waiting'}</span><button className="btn mdt-gps-toggle" onClick={()=>setSendGps(v=>!v)}>{sendGps?'Stop GPS':'Share device GPS'}</button></div>
+          </section>
+          <section className="mdt-card" aria-label="Unit status"><h2 className="mdt-card-title">Status</h2>
+          <div className="mdt-status-list">
+            {BUTTONS.map((b) => (
+              <button
+                key={b.s}
+                className={cx('mdt-status-button',
+                  u!.status === b.s ? 'border-slate-600 bg-slate-700 text-white' : b.s === next ? 'border-sky-400 bg-sky-600 text-white shadow-lg shadow-sky-900' : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800')}
+                data-status={b.s}
+                data-next={b.s===next||undefined}
+                title={b.s===next?'Suggested next status':undefined}
+                aria-pressed={u!.status === b.s}
+                onClick={() => setStatus(b.s)}
+                disabled={!inc && ['enroute', 'onscene', 'transporting', 'atdestination'].includes(b.s)}
+              >
+                <span className="mdt-status-dot"/>{b.label}<kbd>{b.key}</kbd>
+              </button>
+            ))}
+          </div>
+          <button className={cx('mdt-status-button mdt-markout-button', u!.status === 'markout' ? 'border-teal-500 bg-teal-800/50 text-white' : 'border-slate-700 bg-slate-900 text-teal-200 hover:bg-slate-800')}
+            onClick={() => setMoOpen(!moOpen)} disabled={!m.settings.markOuts?.length} aria-expanded={moOpen}>
+            <span className="mdt-status-dot"/>Mark out…<kbd>F7</kbd>
+          </button>
+
+            <p className="mdt-status-hint">F1–F4 require an assignment. F1–F7 work while you are not typing.</p>
+          {moOpen && (
+            <div className="mt-auto space-y-2 rounded-lg border border-teal-700 bg-teal-950/30 p-2" aria-label="Mark out">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-teal-200">Mark out: what are you doing?</span>
+                <input className="input ml-auto h-9 w-64 text-sm" placeholder="Note (optional)" value={moNote} onChange={(e) => setMoNote(e.target.value)} aria-label="Mark-out note" />
+                <button className="btn h-9" onClick={() => setMoOpen(false)}>Cancel</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(m.settings.markOuts ?? []).map((k) => (
+                  <button key={k.code} className="flex h-14 flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900 font-bold text-slate-100 hover:border-teal-500 hover:bg-teal-900/40" onClick={() => markOut(k.code)}>
+                    {k.name}<span className="font-mono text-[10px] font-normal text-slate-400">{k.code}{k.minutes ? ` · check ${k.minutes} min` : ''}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          </section>
+        </aside>
+        <MdtMap m={m} route={route} here={here} onWeather={setWeatherAlerts}/>
+        <aside className="mdt-right" aria-label="Assignment and communications">
           {inc ? (
             <>
-              <div className="rounded-lg border border-slate-700 bg-slate-900 p-3">
+              <div className="mdt-card mdt-assignment"><h2 className="mdt-card-title">Assignment</h2>
                 <div className="flex items-center gap-2">
                   <span className={cx('rounded px-2 py-0.5 font-mono text-lg font-black', prio(inc.priority).bg, prio(inc.priority).fg)}>P{inc.priority}</span>
-                  <span className="text-xl font-bold">{m.typeName}</span>
+                  <span className="mdt-call-type">{m.typeName}</span>
                   {m.alarm && <span className="chip bg-orange-500/30 text-base text-orange-100">{m.alarm}</span>}
                   <span className="ml-auto font-mono text-sm text-slate-400">{inc.number}</span>
                 </div>
                 {m.papers && <div role="alert" className="mt-2 rounded border border-rose-600 bg-rose-950/50 px-2 py-1 text-base font-bold text-rose-100">{m.papers.count} active {m.papers.count === 1 ? 'paper' : 'papers'} at this address ({m.papers.kinds.join(', ')}){m.papers.caution ? ` · CAUTION: ${m.papers.caution}` : ''}</div>}
                 {(m.cautions ?? []).map((c) => <div key={c.id} role="note" className="mt-2 rounded border border-yellow-600 bg-yellow-500/10 px-2 py-1 text-sm text-yellow-100"><b>{c.name}:</b> {c.note}</div>)}
-                <div className="mt-2 flex items-start gap-2 text-2xl font-bold leading-tight text-amber-200">
+                <div className="mdt-address">
                   <MapPin size={22} className="mt-1 shrink-0" aria-hidden /> {inc.location?.address || (inc.location?.lat != null ? `${inc.location.lat.toFixed(5)}, ${inc.location.lon!.toFixed(5)}` : 'No location yet')}
                 </div>
                 <div className="text-sm"><PlaceLine inc={inc} /></div>
@@ -230,6 +276,7 @@ export default function Mdt() {
                   <a href={`tel:${inc.caller.callback}`} className="mt-1 flex items-center gap-2 text-sm text-slate-300"><Phone size={14} aria-hidden /> {inc.caller.name ? `${inc.caller.name} · ` : ''}{inc.caller.callback}</a>
                 )}
                 {m.summary && <p className="mt-2 rounded border border-sky-900/60 bg-sky-950/30 p-2 text-sm leading-snug text-slate-100" aria-label="Summary">{m.summary}</p>}
+                <button className="btn mdt-call-report" onClick={async()=>{if(inc.reports?.[0])return nav(`${isWindowsMdt()?'/mdt/reports':'/rms'}/${inc.reports[0]}`);try{const r=await api.post<{report:{number:string}}>('/rms/reports',{incident:inc.number,offenses:[],people:[],property:[],vehicles:[]});nav(`${isWindowsMdt()?'/mdt/reports':'/rms'}/${r.report.number}`)}catch(e){toast.error(errText(e))}}}><FileText size={14} aria-hidden/> Report</button>
                 <MdtEntry inc={inc} unit={m.unit.id} />
                 <div className="mt-2"><IncidentFiles inc={inc} big /></div>
                 {(m.premises?.length ?? 0) > 0 && <div className="mt-2"><PremiseBox premises={m.premises} compact /></div>}
@@ -248,7 +295,7 @@ export default function Mdt() {
                   <ul className="space-y-0.5 text-sm">{m.bolos!.map((b) => <li key={b.id} className="text-slate-100"><b className="font-mono text-rose-200">{b.id}</b> {b.text}{b.plate && <span className="ml-1 font-mono text-amber-200">{b.plate}</span>}</li>)}</ul>
                 </div>
               )}
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
+              <div className="mdt-card mdt-dispatch-notes">
                 <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Notes from dispatch</div>
                 <ul className="space-y-1 text-base">
                   {notes.length === 0 && <li className="text-sm text-slate-500">No notes yet.</li>}
@@ -265,7 +312,7 @@ export default function Mdt() {
               </div>
             </>
           ) : (
-            <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <div className="mdt-card mdt-empty-assignment"><h2 className="mdt-card-title">Assignment</h2>
               <div className={cx('text-2xl font-bold', u!.status === 'markout' ? 'text-teal-300' : 'text-emerald-300')}>
                 {u!.status === 'available' ? 'Available' : u!.status === 'markout' ? `Marked out: ${m.settings.markOuts?.find((k) => k.code === u!.markOut?.code)?.name ?? u!.markOut?.code}` : statusMeta(u!.status).label}
               </div>
@@ -289,47 +336,14 @@ export default function Mdt() {
               )}
             </div>
           )}
-          {me?.role === 'field' && <MdtBulletins onItems={setVoiceMessages} />}
-          <MdtRoads />
-          <MdtMessages unit={u!.id} messages={m.messages ?? []} unitParam={unitParam} />
-          {moOpen && (
-            <div className="mt-auto space-y-2 rounded-lg border border-teal-700 bg-teal-950/30 p-2" aria-label="Mark out">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-teal-200">Mark out: what are you doing?</span>
-                <input className="input ml-auto h-9 w-64 text-sm" placeholder="Note (optional)" value={moNote} onChange={(e) => setMoNote(e.target.value)} aria-label="Mark-out note" />
-                <button className="btn h-9" onClick={() => setMoOpen(false)}>Cancel</button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {(m.settings.markOuts ?? []).map((k) => (
-                  <button key={k.code} className="flex h-14 flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900 font-bold text-slate-100 hover:border-teal-500 hover:bg-teal-900/40" onClick={() => markOut(k.code)}>
-                    {k.name}<span className="font-mono text-[10px] font-normal text-slate-400">{k.code}{k.minutes ? ` · check ${k.minutes} min` : ''}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className={cx('grid grid-cols-3 gap-2', !moOpen && 'mt-auto')}>
-            {BUTTONS.map((b) => (
-              <button
-                key={b.s}
-                className={cx('flex h-16 flex-col items-center justify-center rounded-lg border text-lg font-bold transition',
-                  u!.status === b.s ? 'border-slate-600 bg-slate-700 text-white' : b.s === next ? 'border-sky-400 bg-sky-600 text-white shadow-lg shadow-sky-900' : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800')}
-                aria-pressed={u!.status === b.s}
-                onClick={() => setStatus(b.s)}
-                disabled={!inc && ['enroute', 'onscene', 'transporting', 'atdestination'].includes(b.s)}
-              >
-                {b.label}<span className="font-mono text-[10px] font-normal text-slate-300/70">{b.key}</span>
-              </button>
-            ))}
-          </div>
-          <button className={cx('flex h-12 items-center justify-center gap-2 rounded-lg border text-base font-bold', u!.status === 'markout' ? 'border-teal-500 bg-teal-800/50 text-white' : 'border-slate-700 bg-slate-900 text-teal-200 hover:bg-slate-800')}
-            onClick={() => setMoOpen(!moOpen)} disabled={!m.settings.markOuts?.length} aria-expanded={moOpen}>
-            Mark out…<span className="font-mono text-[10px] font-normal text-slate-300/70">F7</span>
-          </button>
-        </section>
-        <MdtMap m={m} route={route} here={here} onWeather={setWeatherAlerts} />
-      </div>
-      <footer className="relative z-20 shrink-0 border-t border-rose-900 bg-slate-950 px-3 pt-2" style={{paddingBottom:'max(0.5rem, env(safe-area-inset-bottom))'}} aria-label="Emergency controls">
+
+          {!inc&&(m.bolos?.length??0)>0&&<section className="mdt-card mdt-bolos"><h2 className="mdt-card-title">BOLOs</h2>{m.bolos!.map(b=><p key={b.id}><b>{b.id}</b> {b.text} <span>{b.plate}</span></p>)}</section>}
+          {me?.role==='field'&&<MdtBulletins onItems={setVoiceMessages}/>}
+          <MdtRoads/>
+          <MdtMessages unit={u!.id} messages={m.messages??[]} unitParam={unitParam}/>
+        </aside>
+      </main>
+      <footer className="mdt-emergency-dock" style={{paddingBottom:'env(safe-area-inset-bottom)'}} aria-label="Emergency controls">
         <EmergencyButton unitParam={unitParam} onSent={load} />
       </footer>
       {crewOpen && (
@@ -399,16 +413,17 @@ function MdtMap({ m, route, here, onWeather }: { m: MDTView; route: RouteView | 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, key])
   return (
-    <div className="relative min-h-72">
+    <section className="mdt-map" aria-label="Operational map">
       {/* MapLibre makes its container position: relative, so it sits inside an absolute box. */}
       <div className="absolute inset-0"><div ref={box} className="h-full w-full" /></div>
       <WeatherAlerts map={map} ready={ready} onAlerts={onWeather} />
+      <div className="mdt-map-zoom" role="group" aria-label="Map zoom"><button aria-label="Zoom in" onClick={()=>map.current?.zoomIn()}>+</button><button aria-label="Zoom out" onClick={()=>map.current?.zoomOut()}>−</button></div>
       {m.health.photos?.available && (
         <button className={cx('btn absolute left-2 top-2 h-9', ph && 'ring-1 ring-amber-400 text-amber-200')} onClick={() => setPhotos((v) => { localStorage.setItem('bd.mdtPhotos', v ? '0' : '1'); return !v })}>
           <ImageIcon size={14} aria-hidden /> Photos
         </button>
       )}
-    </div>
+    </section>
   )
 }
 
