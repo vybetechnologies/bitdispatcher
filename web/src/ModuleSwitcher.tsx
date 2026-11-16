@@ -1,3 +1,4 @@
+import DesktopStatus from './DesktopStatus'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Layers3, Check } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -82,5 +83,5 @@ export default function ModuleSwitcher() {
 export function WorkspaceShell({children}:{children:React.ReactNode}) {
  const me=useStore(s=>s.me)
  if(!me)return <>{children}</>
- return <div className="flex h-full min-h-0 flex-col"><ModuleSwitcher /><div className="min-h-0 flex-1">{children}</div></div>
+ return <div className="flex h-full min-h-0 flex-col"><ModuleSwitcher /><DesktopStatus/><div className="min-h-0 flex-1">{children}</div></div>
 }

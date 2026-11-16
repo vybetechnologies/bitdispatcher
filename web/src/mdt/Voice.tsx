@@ -27,7 +27,7 @@ export function voiceSnapshot(m: MDTView, messages: CommView[], weather: Weather
     for(const c of m.cautions || []) add('caution:'+c.id,`Safety warning. ${words(c.name)}. ${words(c.note)}`,0)
     for(const n of (i.timeline || []).filter(n=>n.priority).slice(-5)) add(`note:${i.number}:${n.seq}`,`Priority dispatch note. ${words(n.text)}`,0)
   }
-  if(m.emergency) add('emergency',m.emergency.ackedBy ? 'Dispatch acknowledged your emergency.' : 'Emergency sent. Waiting for dispatch acknowledgement.',-2)
+  if(m.emergency) add('emergency',m.emergency.key.startsWith('OFFLINE-')?'Emergency saved on this device. Not sent. Use radio or phone for help.':m.emergency.ackedBy ? 'Dispatch acknowledged your emergency.' : 'Emergency sent. Waiting for dispatch acknowledgement.',-2)
   for(const message of (m.messages || []).filter(x=>x.from!==m.unit.id).slice(-12)) add('message:'+message.id,`${message.urgent?'Urgent message':'Message'} from ${message.fromUnit ? 'unit ' : ''}${words(message.from)}. ${words(message.text)}`,message.urgent?0:2)
   for(const b of m.bolos || []) add('bolo:'+b.id,`BOLO. ${words(b.text)}. ${b.plate ? 'Plate '+words(b.plate) : ''}`,1)
   for(const c of messages.filter(c=>(c.state==='active'||c.state==='updated') && (!c.expires || Date.parse(c.expires)>Date.now()))) {

@@ -1,3 +1,5 @@
+import { desktopRequest, isWindowsMdt } from './desktop'
+
 // The API client. Every write carries the X-BitDispatcher header (the server's CSRF check).
 
 export class ApiError extends Error {
@@ -15,7 +17,7 @@ export class ApiError extends Error {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { 'X-BitDispatcher': '1' }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
-  const res = await fetch('./api' + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' })
+  const res = isWindowsMdt()?await desktopRequest(method,path,body):await fetch('./api' + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' })
   if (res.status === 204) return undefined as T
   if (res.status === 202) {
     // The server needs something more (sign-in: a duty, a code): the caller reads it from the error.

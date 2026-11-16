@@ -57,6 +57,7 @@ type Integrations struct {
 
 // Server is the API.
 type Server struct {
+	offlineMu      sync.Mutex
 	enformionMu    sync.Mutex   // serialize local-miss provider requests and ingestion
 	enformionHTTP  *http.Client // test override; production uses a bounded, no-redirect client
 	weather        weatherCache
@@ -388,6 +389,11 @@ func (s *Server) handle(pattern, role string, h handler) {
 			s.Auth.Touch(c.Value) // a change is input at the console
 		}
 		a := actorOf(se)
+		if meta, ok := r.Context().Value(offlineCommandKey{}).(offlineCommandMeta); ok {
+			a.ClientCommand = meta.ID
+			a.ClientHash = meta.Hash
+			a.ClientAt = meta.At
+		}
 		a.Agency = s.workingAgency(se)
 		// Supervisory views are the agency's to give: a direct request without the right is refused.
 		if s.viewRefused(w, r, se, a) || s.scopeRefused(w, r, se, a) {

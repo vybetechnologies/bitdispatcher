@@ -23,24 +23,27 @@ import (
 
 // Event is one thing that happened.
 type Event struct {
-	Seq      uint64          `json:"seq"`
-	ID       string          `json:"id"`
-	At       time.Time       `json:"at"`
-	Type     string          `json:"type"`
-	Actor    string          `json:"actor"`             // a username, or system, bitvoice, ali, radio
-	Role     string          `json:"role,omitempty"`    // the actor's active role
-	Session  string          `json:"session,omitempty"` // the authenticated session (a hash, never the token)
-	Console  string          `json:"console,omitempty"` // the position
-	Duty     string          `json:"duty,omitempty"`    // the work the actor signed in to do (call-taker, police dispatcher...)
-	Agency   string          `json:"agency,omitempty"`  // the agency the actor was working for, when agencies are configured
-	Incident string          `json:"incident,omitempty"`
-	Unit     string          `json:"unit,omitempty"`
-	Call     string          `json:"call,omitempty"`
-	Parent   string          `json:"parent,omitempty"` // a batch's parent event
-	Site     string          `json:"site,omitempty"`   // the site that wrote it, when there are several
-	Data     json.RawMessage `json:"data,omitempty"`
-	Prev     string          `json:"prev"`
-	Hash     string          `json:"hash"`
+	ClientCommand string          `json:"clientCommand,omitempty"`
+	ClientHash    string          `json:"clientHash,omitempty"`
+	ClientAt      time.Time       `json:"clientAt,omitzero"`
+	Seq           uint64          `json:"seq"`
+	ID            string          `json:"id"`
+	At            time.Time       `json:"at"`
+	Type          string          `json:"type"`
+	Actor         string          `json:"actor"`             // a username, or system, bitvoice, ali, radio
+	Role          string          `json:"role,omitempty"`    // the actor's active role
+	Session       string          `json:"session,omitempty"` // the authenticated session (a hash, never the token)
+	Console       string          `json:"console,omitempty"` // the position
+	Duty          string          `json:"duty,omitempty"`    // the work the actor signed in to do (call-taker, police dispatcher...)
+	Agency        string          `json:"agency,omitempty"`  // the agency the actor was working for, when agencies are configured
+	Incident      string          `json:"incident,omitempty"`
+	Unit          string          `json:"unit,omitempty"`
+	Call          string          `json:"call,omitempty"`
+	Parent        string          `json:"parent,omitempty"` // a batch's parent event
+	Site          string          `json:"site,omitempty"`   // the site that wrote it, when there are several
+	Data          json.RawMessage `json:"data,omitempty"`
+	Prev          string          `json:"prev"`
+	Hash          string          `json:"hash"`
 }
 
 // Ledger is an open ledger file.

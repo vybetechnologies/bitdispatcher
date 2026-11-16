@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>LAS.MDT</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>Lakes Area Security Corporation</Company>
+    <Product>Lakes Area Security MDT</Product>
+    <Description>Lakes Area Security Windows mobile data terminal</Description>
+    <ApplicationIcon Condition="Exists('brand.ico')">brand.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.15" />
+    <EmbeddedResource Include="web.zip" LogicalName="WebAssets.zip" />
+  </ItemGroup>
+</Project>

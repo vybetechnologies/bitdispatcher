@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { FileText, Image as ImageIcon, LocateFixed, LogOut, MapPin, Navigation, Phone, Send, HardHat, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, errText } from '../api'
+import { isWindowsMdt, desktopState } from '../desktop'
 import { signOut, useStore } from '../store'
 import { Logo, StatusChip } from '../ui'
 import PremiseBox from '../console/PremiseBox'
@@ -18,6 +19,7 @@ import RecordSearch from './RecordSearch'
 import MdtVoice from './Voice'
 import type { LookupCaution } from './Voice'
 import EmergencyButton from './EmergencyButton'
+import DesktopDownload from '../DesktopDownload'
 import WeatherAlerts from '../WeatherAlerts'
 import type { WeatherFeature } from '../WeatherAlerts'
 import type { CommView } from '../types'
@@ -70,7 +72,9 @@ export default function Mdt() {
   const load = () => api.get<MDTView>('/mdt' + unitParam).then((v) => { setM(v); setErr('') }).catch((e) => setErr(errText(e)))
   // Follow every change the server announces.
   useEffect(() => {
+    const synced=()=>void load();window.addEventListener('las:synced',synced);window.addEventListener('las:desktop',synced)
     load()
+    return()=>{window.removeEventListener('las:synced',synced);window.removeEventListener('las:desktop',synced)}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view?.seq, unitParam])
 
@@ -170,13 +174,14 @@ export default function Mdt() {
       )}
       <header className="flex max-h-[35dvh] shrink-0 flex-wrap items-center gap-3 overflow-y-auto border-b border-slate-800 bg-slate-900 px-3 py-2">
         <Logo size={22} />
-        <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} lookupCaution={lookupCaution} connected={!err && stream === 'live'} />
+        <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} lookupCaution={lookupCaution} connected={isWindowsMdt()||!err && stream === 'live'} />
         {unitPicker}
+        <DesktopDownload compact/>
         <span className="font-mono text-2xl font-black tracking-tight">{u!.id}</span>
         <StatusChip status={u!.status} />
         <span className="text-xs text-slate-400">{u!.covering ? `covering ${u!.covering}` : m.station?.name}</span>
         <span className={cx('chip ml-2', gps === 'on' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')} title="Position from this device">
-          <LocateFixed size={12} aria-hidden /> GPS {!sendGps ? 'off' : gps === 'on' ? 'sending' : gps === 'denied' ? 'blocked: allow location' : gps === 'none' ? 'not available' : 'waiting'}
+          <LocateFixed size={12} aria-hidden /> GPS {!sendGps ? 'off' : gps === 'on' ? isWindowsMdt()&&!desktopState().connected?'recording offline':'sending' : gps === 'denied' ? 'blocked: allow location' : gps === 'none' ? 'not available' : 'waiting'}
         </span>
         <button className="btn" onClick={() => setSendGps(v => !v)}>{sendGps ? 'Stop GPS' : 'Share device GPS'}</button>
         {me?.role !== 'field' && <Link to="/admin" className="btn">Administration</Link>}
@@ -195,7 +200,7 @@ export default function Mdt() {
         <button className="btn" onClick={signOut} aria-label="Sign out"><LogOut size={14} aria-hidden /></button>
       </header>
       {m.emergency && !m.emergency.ackedBy && (
-        <div role="alert" className="animate-pulse bg-rose-700 px-3 py-2 text-center text-lg font-black tracking-wide">EMERGENCY SENT {clock(m.emergency.raised, now)} · waiting for dispatch to acknowledge</div>
+        <div role="alert" className="animate-pulse bg-rose-700 px-3 py-2 text-center text-lg font-black tracking-wide">{m.emergency.key.startsWith('OFFLINE-')?'EMERGENCY QUEUED — NOT SENT. USE RADIO / PHONE':'EMERGENCY SENT'} {clock(m.emergency.raised, now)} · {m.emergency.key.startsWith('OFFLINE-')?'waiting for connection':'waiting for dispatch to acknowledge'}</div>
       )}
       {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} onCaution={text=>setLookupCaution(text?{id:++lookupRun.current,text}:null)} />}
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(24rem,36rem)_1fr]">

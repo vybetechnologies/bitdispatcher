@@ -29,5 +29,12 @@
 
 # Local build logs and private verification screenshots
 /tmp/
+/desktop/**/bin/
+/desktop/**/obj/
+/desktop/**/web.zip
+/desktop/**/brand.ico
+/desktop/publish/
+/desktop/LAS-MDT-Setup*.exe
+/desktop/release-notes.txt
 /docs/las-live-own-unit-mdt.jpg
 /docs/las-live-unit-bindings.jpg

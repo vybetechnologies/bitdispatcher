@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Siren } from 'lucide-react'
 import { toast } from 'sonner'
 import { api, errText } from '../api'
+import { isWindowsMdt, desktopState } from '../desktop'
 
 /** Always visible in the fixed-height MDT emergency dock. Never sends on tap. */
 export default function EmergencyButton({unitParam,onSent}:{unitParam:string;onSent:()=>void}){
@@ -16,7 +17,7 @@ export default function EmergencyButton({unitParam,onSent}:{unitParam:string;onS
    const f=Math.min(1,(Date.now()-t0)/2000);setHeld(f)
    if(f<1)return
    stop();busy.current=true
-   api.post('/mdt/emergency'+unitParam).then(()=>{toast.error('EMERGENCY sent to dispatch');onSent()}).catch(e=>toast.error(errText(e))).finally(()=>{busy.current=false})
+   api.post<{queued?:boolean}>('/mdt/emergency'+unitParam).then(result=>{toast.error(result?.queued||isWindowsMdt()&&!desktopState().connected?'EMERGENCY SAVED — NOT SENT. Use radio or phone for help.':'EMERGENCY sent to dispatch');onSent()}).catch(e=>toast.error(errText(e))).finally(()=>{busy.current=false})
   },50)
  }
  useEffect(()=>{

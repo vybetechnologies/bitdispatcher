@@ -1,3 +1,4 @@
+import DesktopDownload from '../DesktopDownload'
 import LasAgency from './LasAgency'
 import LasRecords from './LasRecords'
 import LasPublicCalls from './LasPublicCalls'
@@ -283,7 +284,7 @@ function AdminNav({ pages, seq }: { pages: NavPage[]; seq?: number }) {
         Every change here is an attributed event in the ledger.
         {seq !== undefined && <div className="mt-0.5 font-mono">ledger #{seq}</div>}
       </div>
-      <div className="space-y-2 border-t border-slate-800 p-3 text-xs"><a href="https://mgt.lakesareasecurity.com" target="_blank" rel="noopener noreferrer" className="block text-slate-300">Management portal ↗</a><button className="btn w-full" onClick={() => signOut()}>Sign out</button><p className="text-slate-500">Powered by BitDispatcher · Apache 2.0</p></div>
+      <div className="space-y-2 border-t border-slate-800 p-3 text-xs"><DesktopDownload compact/><a href="https://mgt.lakesareasecurity.com" target="_blank" rel="noopener noreferrer" className="block text-slate-300">Management portal ↗</a><button className="btn w-full" onClick={() => signOut()}>Sign out</button><p className="text-slate-500">Powered by BitDispatcher · Apache 2.0</p></div>
     </nav>
   )
 }

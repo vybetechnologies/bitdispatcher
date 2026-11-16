@@ -141,6 +141,7 @@ type actionData struct {
 
 // State is everything bitdispatcher knows, rebuilt from the ledger.
 type State struct {
+	clientCommands map[string]OfflineCommandResult
 	lasPeople      bool
 	LASRecords     map[string]LASRecord     `json:"lasRecords,omitempty"`
 	LASPublicCalls map[string]LASPublicCall `json:"lasPublicCalls,omitempty"`
@@ -260,6 +261,9 @@ func decode[T any](e ledger.Event) (T, error) {
 // apply changes the state by one event. It never fails on a well-formed ledger; an event it cannot read is
 // an error, because the ledger was written by commands that validated it.
 func (s *State) apply(e ledger.Event) error {
+	if e.ClientCommand != "" {
+		s.rememberOfflineCommand(e)
+	}
 	s.Seq++ // events applied: the ledger's sequence on one site, the merged count on several
 	if e.At.After(s.lastAt) {
 		s.lastAt = e.At

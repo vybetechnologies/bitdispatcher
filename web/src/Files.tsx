@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { FileText, Paperclip, Trash2, Upload, X } from 'lucide-react'
 import { api, ApiError, errText } from './api'
+import { desktopFile, isWindowsMdt } from './desktop'
 import { can, useStore } from './store'
 import type { Incident, IncidentFile } from './types'
 
@@ -26,11 +27,11 @@ export default function IncidentFiles({ inc, big, onChanged }: { inc: Incident; 
     try {
       for (const f of Array.from(list)) {
         const q = new URLSearchParams({ name: f.name, caption })
-        const r = await fetch(`./api/incidents/${encodeURIComponent(inc.number)}/files?${q}`, { method: 'POST', body: f, headers: { 'X-BitDispatcher': '1' }, credentials: 'same-origin' })
+        const r = isWindowsMdt()?await desktopFile(`/incidents/${encodeURIComponent(inc.number)}/files?${q}`,f):await fetch(`./api/incidents/${encodeURIComponent(inc.number)}/files?${q}`, { method: 'POST', body: f, headers: { 'X-BitDispatcher': '1' }, credentials: 'same-origin' })
         if (!r.ok) throw new ApiError(r.status, ((await r.json().catch(() => ({}))) as { message?: string }).message ?? r.statusText)
       }
       setCaption('')
-      toast.success(list.length > 1 ? `${list.length} files added` : 'File added')
+      toast.success(isWindowsMdt()?'Files saved — check the Windows sync outbox for delivery':list.length > 1 ? `${list.length} files added` : 'File added')
       onChanged?.()
     } catch (e) {
       toast.error(errText(e))

@@ -1,0 +1,90 @@
+name: Build and publish Windows MDT
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/las-branding, main]
+    paths:
+      - 'desktop/**'
+      - 'cmd/las-mdt-map/**'
+      - '.github/workflows/windows-mdt.yml'
+permissions:
+  contents: write
+concurrency:
+  group: las-windows-mdt-release
+  cancel-in-progress: true
+jobs:
+  windows-mdt:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Prepare the shared MDT interface and company icon
+        shell: pwsh
+        run: |
+          Compress-Archive -Path internal/web/dist/* -DestinationPath desktop/LAS.Mdt.Windows/web.zip -Force
+          ./desktop/scripts/make-icon.ps1
+      - name: Build native Windows application and offline map engine
+        shell: pwsh
+        run: |
+          dotnet publish desktop/LAS.Mdt.Windows/LAS.Mdt.Windows.csproj -c Release -o desktop/publish
+          if ($LASTEXITCODE -ne 0) { throw "Windows application build failed" }
+          $env:CGO_ENABLED='0'
+          go build -trimpath -ldflags "-s -w" -o desktop/publish/LAS.MDT.Map.exe ./cmd/las-mdt-map
+          if ($LASTEXITCODE -ne 0) { throw "Offline map engine build failed" }
+          Copy-Item LICENSE,NOTICE desktop/publish/
+      - name: Test protected storage, restart recovery and update trust
+        shell: pwsh
+        run: |
+          $test = Start-Process desktop/publish/LAS.MDT.exe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
+          if ($test.ExitCode -ne 0) { if (Test-Path native-test-error.txt) { Get-Content native-test-error.txt }; throw "Native MDT tests failed" }
+      - name: Build independent installer
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content desktop/LAS.Mdt.Windows/LAS.Mdt.Windows.csproj
+          $releaseVersion = $project.Project.PropertyGroup.Version
+          "MDT_VERSION=$releaseVersion" >> $env:GITHUB_ENV
+          $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (-not (Test-Path $nsis)) { choco install nsis -y --no-progress }
+          $payload = (Resolve-Path desktop/publish).Path
+          $output = Join-Path $env:GITHUB_WORKSPACE 'desktop/LAS-MDT-Setup-x64.exe'
+          & $nsis /V2 "/DVERSION=$releaseVersion" "/DPAYLOAD=$payload" "/DOUT=$output" desktop/installer.nsi
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
+      - name: Test install and update preserve local data
+        shell: pwsh
+        run: |
+          $data = Join-Path $env:LOCALAPPDATA 'Lakes Area Security/MDT'
+          New-Item -ItemType Directory -Force $data | Out-Null
+          Set-Content (Join-Path $data 'update-preservation-test.txt') 'synthetic pending work'
+          foreach ($arguments in @('/S /NOLAUNCH','/S /UPDATE /NOLAUNCH')) {
+            $setup = Start-Process desktop/LAS-MDT-Setup-x64.exe -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
+            if ($setup.ExitCode -ne 0) { throw "Installer returned $($setup.ExitCode)" }
+          }
+          if ((Get-Content (Join-Path $data 'update-preservation-test.txt')) -ne 'synthetic pending work') { throw "Update lost local data" }
+          $installed = Join-Path $env:LOCALAPPDATA "Programs/Lakes Area Security MDT/versions/$env:MDT_VERSION/LAS.MDT.exe"
+          if (-not (Test-Path $installed)) { throw "Installed Windows application is missing" }
+          $test = Start-Process $installed -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
+          if ($test.ExitCode -ne 0) { throw "Installed application self-test failed" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LAS-MDT-Windows-x64
+          path: desktop/LAS-MDT-Setup-x64.exe
+      - name: Publish independent download and update channel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $notes = @"
+          Lakes Area Security MDT for Windows 10/11 x64.
+          Independent installer with built-in updates, the shared MDT interface, protected offline records and sync outbox, and the recorded offline map/routing engine.
+          Sign in online once to prepare the device. Offline entries remain visibly pending until dispatch receives them.
+          Requires the Microsoft Edge WebView2 Evergreen Runtime.
+          "@
+          Set-Content desktop/release-notes.txt $notes
+          gh release create "mdt-v$env:MDT_VERSION" desktop/LAS-MDT-Setup-x64.exe --title "LAS MDT for Windows $env:MDT_VERSION" --notes-file desktop/release-notes.txt --target $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw "Windows MDT release was not published; use a new version for a published update" }

@@ -3,6 +3,7 @@
 // statuses) in an outbox that is sent, marked as entered offline, when the server is back.
 
 import { api } from './api'
+import { isWindowsMdt } from './desktop'
 import type { View } from './types'
 
 const DB = 'bitdispatcher'
@@ -128,7 +129,7 @@ export async function send(): Promise<{ sent: number; failed: { item: OutItem; e
 
 /** registerWorker keeps the interface itself available offline (the service worker caches the app). */
 export function registerWorker() {
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  if (!isWindowsMdt() && 'serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('./sw.js').catch(() => {})
   }
 }

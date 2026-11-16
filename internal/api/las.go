@@ -19,6 +19,7 @@ func restrictedLASPath(path string) bool {
 }
 
 func (s *Server) lasRoutes() {
+	s.desktopRoutes()
 	s.lasPublicRoutes()
 	s.mdtLookupRoutes()
 	s.moduleRoutes()

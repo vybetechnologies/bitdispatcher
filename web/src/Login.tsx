@@ -3,6 +3,7 @@ import { KeyRound, LogIn, MonitorCheck, PlayCircle, ShieldCheck, Smartphone } fr
 import { renderSVG } from 'uqr'
 import { api, ApiError, errText } from './api'
 import { checkMe } from './store'
+import DesktopDownload from './DesktopDownload'
 import { Logo } from './ui'
 import { cx } from './util'
 import type { Duty, Need } from './types'
@@ -188,6 +189,7 @@ export default function Login() {
                   </button>
                 ))}
               </div>
+              {need?.duties?.includes('field')&&<div className="mt-3"><DesktopDownload/></div>}
               <button type="button" className="btn btn-ghost mt-2 text-xs" onClick={() => setNeed(null)}>Back</button>
             </fieldset>
           )}

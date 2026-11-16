@@ -17,12 +17,15 @@ import (
 
 // Actor is who does something: a signed-in person at a position, or a system (bitvoice, ali, radio).
 type Actor struct {
-	User    string
-	Role    string
-	Session string
-	Console string
-	Duty    string // the work the person signed in to do: calltaker, police, fire, ems, dispatcher, supervisor, admin
-	Agency  string // the agency the person is working for (agency.go), when agencies are configured
+	ClientCommand string
+	ClientHash    string
+	ClientAt      time.Time
+	User          string
+	Role          string
+	Session       string
+	Console       string
+	Duty          string // the work the person signed in to do: calltaker, police, fire, ems, dispatcher, supervisor, admin
+	Agency        string // the agency the person is working for (agency.go), when agencies are configured
 }
 
 // System actors.
@@ -167,7 +170,7 @@ func (e *Engine) write(a Actor, typ string, r refs, data any) (ledger.Event, err
 		}
 		raw = b
 	}
-	ev, err := e.led.Append(ledger.Event{Type: typ, Actor: a.User, Role: a.Role, Session: a.Session, Console: a.Console, Duty: a.Duty, Agency: a.Agency,
+	ev, err := e.led.Append(ledger.Event{ClientCommand: a.ClientCommand, ClientHash: a.ClientHash, ClientAt: a.ClientAt, Type: typ, Actor: a.User, Role: a.Role, Session: a.Session, Console: a.Console, Duty: a.Duty, Agency: a.Agency,
 		Incident: r.Incident, Unit: r.Unit, Call: r.Call, Parent: r.Parent, Data: raw, At: e.now(), Site: e.site})
 	if err != nil {
 		return ledger.Event{}, err
