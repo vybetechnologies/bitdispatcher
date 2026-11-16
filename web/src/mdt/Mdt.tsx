@@ -16,6 +16,7 @@ import MdtBulletins from './Bulletins'
 import MdtRoads from './Roads'
 import RecordSearch from './RecordSearch'
 import MdtVoice from './Voice'
+import type { LookupCaution } from './Voice'
 import EmergencyButton from './EmergencyButton'
 import WeatherAlerts from '../WeatherAlerts'
 import type { WeatherFeature } from '../WeatherAlerts'
@@ -51,6 +52,8 @@ export default function Mdt() {
   const view = useStore((s) => s.view)
   const stream = useStore((s) => s.stream)
   const [voiceMessages, setVoiceMessages] = useState<CommView[]>([])
+  const [lookupCaution,setLookupCaution]=useState<LookupCaution|null>(null)
+  const lookupRun=useRef(0)
   const [weatherAlerts, setWeatherAlerts] = useState<WeatherFeature[]>([])
   const [m, setM] = useState<MDTView | null>(null)
   const [err, setErr] = useState('')
@@ -167,7 +170,7 @@ export default function Mdt() {
       )}
       <header className="flex max-h-[35dvh] shrink-0 flex-wrap items-center gap-3 overflow-y-auto border-b border-slate-800 bg-slate-900 px-3 py-2">
         <Logo size={22} />
-        <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} connected={!err && stream === 'live'} />
+        <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} lookupCaution={lookupCaution} connected={!err && stream === 'live'} />
         {unitPicker}
         <span className="font-mono text-2xl font-black tracking-tight">{u!.id}</span>
         <StatusChip status={u!.status} />
@@ -194,7 +197,7 @@ export default function Mdt() {
       {m.emergency && !m.emergency.ackedBy && (
         <div role="alert" className="animate-pulse bg-rose-700 px-3 py-2 text-center text-lg font-black tracking-wide">EMERGENCY SENT {clock(m.emergency.raised, now)} · waiting for dispatch to acknowledge</div>
       )}
-      {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} />}
+      {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} onCaution={text=>setLookupCaution(text?{id:++lookupRun.current,text}:null)} />}
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(24rem,36rem)_1fr]">
         <section className="flex min-h-0 flex-col gap-2 overflow-y-auto p-3">
           {inc ? (

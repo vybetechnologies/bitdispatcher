@@ -7,9 +7,21 @@ import type { Person } from '../requests/types'
 
 type Hit = { flags?:{id:string;title:string;warning:string;instruction:string}[];person?:Person;incidents?:{incident:string;role:string}[];source?:string; record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
 type Results = { kind:'person'|'vehicle'; items:Hit[]; more:boolean; source:string; searchedAt:string }
+export function personCautionAnnouncement(result:Results):string {
+ if(result.kind!=='person')return ''
+ const cautions=result.items.filter(h=>h.safetyConcern||h.person?.safety||h.flags?.length)
+ if(!cautions.length)return ''
+ const details=cautions.slice(0,3).map(h=>{
+  const flags=(h.flags||[]).map(f=>[f.title,f.warning,f.instruction].filter(Boolean).join('. '))
+  const n=h.person?.safetyNote
+  if(!flags.length&&n)flags.push([n.title,n.reason,n.weapons,n.instruction].filter(Boolean).join('. '))
+  return `Possible match ${h.name||'unnamed person'}. ${flags.join('. ')||'Recorded caution. Contact dispatch for details.'}`
+ })
+ return `Officer safety warning. ${cautions.length} possible person ${cautions.length===1?'match has a caution':'matches have cautions'}. ${details.join('. ')}${cautions.length>3?'. Additional cautions are shown in the search results.':''}`
+}
 
 /** Private local-record lookup, kept inside MDT so it never changes the user's duty or assigned unit. */
-export default function RecordSearch({onClose}:{onClose:()=>void}) {
+export default function RecordSearch({onClose,onCaution}:{onClose:()=>void;onCaution?:(text:string)=>void}) {
  const [kind,setKind]=useState<'person'|'vehicle'>('person')
  const [name,setName]=useState('')
  const [dob,setDob]=useState('')
@@ -25,7 +37,7 @@ export default function RecordSearch({onClose}:{onClose:()=>void}) {
  const changeKind=(next:'person'|'vehicle')=>{request.current++;setKind(next);setError('');setResult(null)}
  const search=async(e:React.FormEvent)=>{
   e.preventDefault();if(busy)return;const id=++request.current;setBusy(true);setError('');setResult(null)
-  try{const response=await api.post<Results>('/mdt/records/search',{kind,purpose,...(kind==='person'?{name,dob}:{plate,state,vin})});if(request.current===id)setResult(response)}
+  try{const response=await api.post<Results>('/mdt/records/search',{kind,purpose,...(kind==='person'?{name,dob}:{plate,state,vin})});if(request.current===id){setResult(response);onCaution?.(personCautionAnnouncement(response))}}
   catch(e){if(request.current===id)setError(errText(e))}
   finally{if(request.current===id)setBusy(false)}
  }

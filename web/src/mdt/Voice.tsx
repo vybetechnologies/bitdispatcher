@@ -6,14 +6,17 @@ import { statusMeta } from '../util'
 import type { WeatherFeature } from '../WeatherAlerts'
 
 export type Announcement = { id: string; text: string; priority: number }
+export type LookupCaution = {id:number;text:string}
 const words = (s?: string) => (s || '').replace(/\s+/g,' ').trim().slice(0,600)
 /** Input is only the assigned unit's already-authorized terminal/inbox data. */
-export function voiceSnapshot(m: MDTView, messages: CommView[], weather: WeatherFeature[] = []): Announcement[] {
+export function voiceSnapshot(m: MDTView, messages: CommView[], weather: WeatherFeature[] = [],lookupCaution?:LookupCaution|null): Announcement[] {
   const out: Announcement[]=[]
   const add=(id:string,text:string,priority=2)=>out.push({id,text:words(text),priority})
   const i=m.incident
   add('assignment',i ? `Assigned call ${i.number}. ${m.typeName || i.type}. Priority ${i.priority}. ${words(i.location?.address)}.` : 'No call assigned.')
   add('status',`Unit ${m.unit.id}. Status ${statusMeta(m.unit.status).label}.`,1)
+  for(const call of m.pending||[])add('pending:'+call.number,`New call for service. ${call.type}. Priority ${call.priority}. ${words(call.location?.address)}. Call ${call.number}.`,call.priority<=2?1:2)
+  if(lookupCaution)add('lookup-caution:'+lookupCaution.id,lookupCaution.text,-1)
   if(i) {
     add('call-status',`Call ${i.number}. ${i.status}. Priority ${i.priority}.`)
     if(i.newLocation) add('location-change',`Dispatch changed the call location. ${words(i.newLocation.location.address)}`,0)
@@ -24,7 +27,7 @@ export function voiceSnapshot(m: MDTView, messages: CommView[], weather: Weather
     for(const c of m.cautions || []) add('caution:'+c.id,`Safety warning. ${words(c.name)}. ${words(c.note)}`,0)
     for(const n of (i.timeline || []).filter(n=>n.priority).slice(-5)) add(`note:${i.number}:${n.seq}`,`Priority dispatch note. ${words(n.text)}`,0)
   }
-  if(m.emergency) add('emergency',m.emergency.ackedBy ? 'Dispatch acknowledged your emergency.' : 'Emergency sent. Waiting for dispatch acknowledgement.',0)
+  if(m.emergency) add('emergency',m.emergency.ackedBy ? 'Dispatch acknowledged your emergency.' : 'Emergency sent. Waiting for dispatch acknowledgement.',-2)
   for(const message of (m.messages || []).filter(x=>x.from!==m.unit.id).slice(-12)) add('message:'+message.id,`${message.urgent?'Urgent message':'Message'} from ${message.fromUnit ? 'unit ' : ''}${words(message.from)}. ${words(message.text)}`,message.urgent?0:2)
   for(const b of m.bolos || []) add('bolo:'+b.id,`BOLO. ${words(b.text)}. ${b.plate ? 'Plate '+words(b.plate) : ''}`,1)
   for(const c of messages.filter(c=>(c.state==='active'||c.state==='updated') && (!c.expires || Date.parse(c.expires)>Date.now()))) {
@@ -41,7 +44,7 @@ export function changedAnnouncements(before: Map<string,string>, next: Announcem
   return next.filter(n=>before.get(n.id)!==n.text)
 }
 
-export default function MdtVoice({ m, messages, weather = [], connected }: {m:MDTView|null;messages:CommView[];weather?:WeatherFeature[];connected:boolean}) {
+export default function MdtVoice({ m, messages, weather = [],lookupCaution, connected }: {m:MDTView|null;messages:CommView[];weather?:WeatherFeature[];lookupCaution?:LookupCaution|null;connected:boolean}) {
   const [enabled,setEnabled]=useState(false)
   const [voices,setVoices]=useState<SpeechSynthesisVoice[]>([])
   const [voice,setVoice]=useState('')
@@ -120,9 +123,21 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
   },[supported,voices])
   useEffect(()=>{
     if(!enabled||!m)return
-    if(!connected){stop();return}
-    const next=voiceSnapshot(m,messages,weather)
-    const changed=changedAnnouncements(seen.current,next)
+    if(!connected){
+      // A completed person search is fresh authenticated data even if the
+      // separate live call stream is reconnecting. Still speak its caution.
+      const key=lookupCaution?'lookup-caution:'+lookupCaution.id:''
+      pending.current=pending.current.filter(n=>n.id===key)
+      if(currentSpoken.current?.id!==key)stop()
+      const text=words(lookupCaution?.text)
+      if(lookupCaution&&seen.current.get(key)!==text){seen.current.set(key,text);enqueue([{id:key,text,priority:-1}])}
+      return
+    }
+    const next=voiceSnapshot(m,messages,weather,lookupCaution)
+    // Seed the current pending queue on entry; announce new calls rather than
+    // reading an old backlog each time the officer opens the terminal.
+    const firstSnapshot=seen.current.size===0
+    const changed=changedAnnouncements(seen.current,next).filter(n=>!firstSnapshot||!n.id.startsWith('pending:'))
     const current=currentSpoken.current
     if((current && seen.current.has(current.id) && !next.some(n=>n.id===current.id && n.text===current.text)) ||
       (seen.current.has('assignment') && changed.some(n=>n.id==='assignment'))) {
@@ -140,7 +155,7 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
     enqueue(changed)
     // Speech callbacks read current settings through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[enabled,m,messages,weather,connected])
+  },[enabled,m,messages,weather,lookupCaution,connected])
   useEffect(()=>{
     const cancel=()=>off()
     window.addEventListener('bd:locked',cancel);window.addEventListener('bd:signedout',cancel)
@@ -152,7 +167,7 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
     {enabled&&<><button className="btn h-11" aria-label="Repeat last voice announcement" onClick={()=>{stop();enqueue([{id:'repeat',text:last.current||'No previous announcement.',priority:1}])}}><RotateCcw size={16}/> Repeat</button><button className="btn h-11" onClick={stop}>Stop speaking</button></>}
     <button className="btn h-9" aria-expanded={settings} onClick={()=>setSettings(v=>!v)}>Voice settings</button>
     {(!supported||error)&&<span role="status" className="text-xs text-amber-200">{error||'Speech is unavailable in this browser.'}</span>}
-    {enabled&&!connected&&<span role="status" className="text-xs text-amber-200">Voice paused · terminal data is not live</span>}
+    {enabled&&!connected&&<span role="status" className="text-xs text-amber-200">Live call announcements paused · reconnecting</span>}
     {settings&&<div className="panel flex w-full flex-wrap items-center gap-3 rounded p-3 text-sm">
       <label>Device voice <select className="input" value={voice} onChange={e=>setVoice(e.target.value)}><option value="">Default local English voice</option>{voices.map(v=><option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>)}</select></label>
       <label>Speed <input aria-label="Voice speed" type="range" min="0.75" max="1.4" step="0.05" value={rate} onChange={e=>setRate(Number(e.target.value))}/>{rate.toFixed(2)}×</label>

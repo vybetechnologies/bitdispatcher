@@ -7,6 +7,24 @@ vi.mock('../ui',()=>({Modal:({children,title}:{children:React.ReactNode;title:st
 afterEach(()=>{cleanup();vi.restoreAllMocks()})
 const empty={kind:'person',items:[],more:false,source:'LAS CAD records',searchedAt:'2026-11-15T12:00:00Z'}
 describe('MDT private record lookup',()=>{
+ it('sends a core caution and responder instruction to the MDT voice handler on each search',async()=>{
+  const caution=vi.fn()
+  vi.spyOn(api,'post').mockResolvedValue({...empty,items:[{record:'LASR-1',seen:empty.searchedAt,name:'Test Person',flags:[{id:'FL1',title:'Core caution tag',warning:'Test safety warning',instruction:'Contact dispatch'}]}]})
+  render(<RecordSearch onClose={()=>{}} onCaution={caution}/> )
+  fireEvent.change(screen.getByLabelText('Name or alias'),{target:{value:'Test Person'}})
+  fireEvent.click(screen.getByRole('button',{name:'Search LAS records'}))
+  await waitFor(()=>expect(caution).toHaveBeenCalledWith(expect.stringContaining('Officer safety warning')))
+  expect(caution.mock.calls[0][0]).toContain('Core caution tag. Test safety warning. Contact dispatch')
+  fireEvent.click(screen.getByRole('button',{name:'Search LAS records'}))
+  await waitFor(()=>expect(caution).toHaveBeenCalledTimes(2))
+ })
+ it('clears an earlier search caution when the new results have no caution',async()=>{
+  const caution=vi.fn();vi.spyOn(api,'post').mockResolvedValue(empty)
+  render(<RecordSearch onClose={()=>{}} onCaution={caution}/> )
+  fireEvent.change(screen.getByLabelText('Name or alias'),{target:{value:'Test Person'}})
+  fireEvent.click(screen.getByRole('button',{name:'Search LAS records'}))
+  await waitFor(()=>expect(caution).toHaveBeenCalledWith(''))
+ })
  it('displays full entered person identifiers and the core officer safety flag',async()=>{
   vi.spyOn(api,'post').mockResolvedValue({...empty,items:[{record:'LASR-1',source:'LAS directory',seen:empty.searchedAt,name:'Test Person',person:{id:'',role:'subject',ssn:'123-45-6789',dl:'FULL-DL',address:'Test address',notes:'Fixture notes'},flags:[{id:'FL1',title:'Core safety fixture',warning:'Test concern',instruction:'Contact dispatch'}],incidents:[{incident:'LAS-1',role:'witness'}]}]})
   render(<RecordSearch onClose={()=>{}}/> )

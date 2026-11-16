@@ -1,5 +1,18 @@
 # MDT voice and NWS map warnings
 
+LAS11 adds priority officer-safety speech when a completed MDT person search
+returns a core caution flag or recorded safety concern. It reads the possible
+match's name, warning and responder instructions, once for each search run.
+An identical new search still speaks its caution; ordinary screen refreshes do
+not. A no-caution result clears the earlier search notice. The visual core flags
+and full search details remain available. Vehicle/status/weather/routine voice
+uses the same queue; person cautions take priority over routine announcements.
+New pending calls for service announce type, priority, location and call number.
+Fresh completed person-search cautions still speak if the separate call-update
+stream is reconnecting; stale call/status announcements remain paused.
+Existing pending calls are seeded silently on terminal entry; subsequent new or
+changed calls are deduplicated, and withdrawn calls are removed from the queue.
+
 The MDT header has Voice on/off, Repeat, Stop speaking and Voice settings.
 Voice starts automatically on each signed-in MDT page. Speech uses only installed local
 English Web Speech voices (never a remote speech service), with adjustable speed

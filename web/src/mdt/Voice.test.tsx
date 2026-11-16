@@ -61,6 +61,43 @@ it('prioritizes safety and deduplicates polling while announcing changed status'
  const next=voiceSnapshot({...m,unit:{...m.unit,status:'enroute'}},[])
  expect(changedAnnouncements(seen,next).map(n=>n.id)).toEqual(['status'])
 })
+it('speaks each person-search caution run, without repeating it on normal refreshes',async()=>{
+ const audio=speechMock()
+ const base={...m,cautions:[],bolos:[],incident:undefined,pending:[]}
+ const panel=render(<MdtVoice m={base} messages={[]} connected/> )
+ await waitFor(()=>expect(screen.getByText('Voice on')).toBeTruthy());audio.drain();audio.speak.mockClear()
+ const caution={id:1,text:'Officer safety warning. Possible person match has a caution. Core safety fixture. Contact dispatch.'}
+ panel.rerender(<MdtVoice m={base} messages={[]} connected lookupCaution={caution}/> )
+ expect(audio.speak.mock.calls[0][0].text).toContain('Officer safety warning')
+ audio.drain()
+ panel.rerender(<MdtVoice m={{...base}} messages={[]} connected lookupCaution={{...caution}}/> )
+ expect(audio.speak).toHaveBeenCalledTimes(1)
+ panel.rerender(<MdtVoice m={base} messages={[]} connected lookupCaution={{...caution,id:2}}/> )
+ expect(audio.speak).toHaveBeenCalledTimes(2)
+})
+it('announces newly arriving calls once without reading the initial pending backlog',async()=>{
+ const audio=speechMock()
+ const old={number:'OLD-1',type:'PATROL',priority:3,status:'pending',location:{address:'Old test street'}} as NonNullable<MDTView['incident']>
+ const base={...m,cautions:[],bolos:[],incident:undefined,pending:[old]}
+ const panel=render(<MdtVoice m={base} messages={[]} connected/> )
+ await waitFor(()=>expect(screen.getByText('Voice on')).toBeTruthy());audio.drain()
+ expect(audio.speak.mock.calls.some(([u])=>u.text.includes('OLD-1'))).toBe(false)
+ audio.speak.mockClear()
+ const next={...base,pending:[old,{...old,number:'NEW-2',type:'ALARM',priority:1,location:{address:'100 Test Street'}}]}
+ panel.rerender(<MdtVoice m={next} messages={[]} connected/> )
+ expect(audio.speak).toHaveBeenCalledTimes(1)
+ expect(audio.speak.mock.calls[0][0].text).toContain('New call for service. ALARM. Priority 1. 100 Test Street. Call NEW-2')
+ audio.drain();panel.rerender(<MdtVoice m={{...next}} messages={[]} connected/> )
+ expect(audio.speak).toHaveBeenCalledTimes(1)
+})
+it('still voices a freshly completed person-search caution while the call stream reconnects',async()=>{
+ const audio=speechMock()
+ const panel=render(<MdtVoice m={m} messages={[]} connected={false}/> )
+ await waitFor(()=>expect(screen.getByText('Voice on')).toBeTruthy());audio.drain();audio.speak.mockClear()
+ panel.rerender(<MdtVoice m={m} messages={[]} connected={false} lookupCaution={{id:1,text:'Officer safety warning. Contact dispatch.'}}/> )
+ expect(audio.speak).toHaveBeenCalledTimes(1)
+ expect(audio.speak.mock.calls[0][0].text).toContain('Officer safety warning')
+})
 it('keeps the default-on intent visible when the browser requires a gesture',async()=>{
  const audio=speechMock()
  render(<MdtVoice m={m} messages={[]} connected/> )
