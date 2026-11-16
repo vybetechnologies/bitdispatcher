@@ -8,7 +8,7 @@ public partial class App : Application
  protected override void OnStartup(StartupEventArgs e)
  {
   base.OnStartup(e);
-  if (e.Args.Contains("--self-test")) {try {NativeSelfTest.Run();Shutdown(0);}catch(Exception ex){File.WriteAllText("native-test-error.txt",ex.ToString());Shutdown(1);}return;}
+  if (e.Args.Contains("--self-test")) {try {Task.Run(NativeSelfTest.Run).GetAwaiter().GetResult();Shutdown(0);}catch(Exception ex){File.WriteAllText("native-test-error.txt",ex.ToString());Shutdown(1);}return;}
   try
   {
    Directory.CreateDirectory(AppPaths.Data);

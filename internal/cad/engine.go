@@ -476,7 +476,7 @@ func (e *Engine) Record(a Actor, typ string, data any) error {
 		EvPhotosRecording, EvPhotosRecorded, EvPhotosFailed,
 		EvAdvisorySuggested, EvAdvisoryDecided, EvAdvisoryWithdrawn, EvGISImporting, EvGISImported, EvGISFailed, EvJusticeQuery, EvIBRExported,
 		EvLocked, EvUnlocked, EvReviewExported, EvConfigStaged, EvWorkstationCode, EvUserDuties, EvUserMFAReset, EvRecordsViewed, EvTrainingInject,
-		EvAccessRefused, EvSearched, EvSearchOpened, EvCommandRefused, EvSupportBundle, EvPIPSent, EvMapChecked:
+		EvMDTOfflineApplied, EvMDTOfflinePosition, EvAccessRefused, EvSearched, EvSearchOpened, EvCommandRefused, EvSupportBundle, EvPIPSent, EvMapChecked:
 	default:
 		return fmt.Errorf("cad: %s is not a record event", typ)
 	}

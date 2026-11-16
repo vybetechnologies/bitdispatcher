@@ -144,7 +144,7 @@ func (s *Server) desktopRoutes() {
 				}
 			}
 			// Historical locations belong in the audit trail, never as a fresh live AVL.
-			if err := s.Eng.Record(a, "mdt.offline.position", map[string]any{"unit": unit, "position": p}); err != nil {
+			if err := s.Eng.Record(a, cad.EvMDTOfflinePosition, map[string]any{"unit": unit, "position": p}); err != nil {
 				writeErr(w, err)
 				return
 			}
@@ -249,7 +249,7 @@ func (s *Server) desktopRoutes() {
 		if response.Code >= 200 && response.Code < 300 {
 			if _, found := s.Eng.OfflineCommandResult(a.User, cmd.ID); !found {
 				// Successful no-op operations also receive a durable deduplication receipt.
-				if err := s.Eng.Record(a, "mdt.offline.applied", map[string]any{"path": cmd.Path, "unit": unit, "statusAt": own.StatusAt}); err != nil {
+				if err := s.Eng.Record(a, cad.EvMDTOfflineApplied, map[string]any{"path": cmd.Path, "unit": unit, "statusAt": own.StatusAt}); err != nil {
 					writeErr(w, err)
 					return
 				}

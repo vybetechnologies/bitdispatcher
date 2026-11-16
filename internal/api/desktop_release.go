@@ -28,7 +28,7 @@ var windowsReleases struct {
 func windowsReleaseInfo() windowsRelease {
 	windowsReleases.Lock()
 	defer windowsReleases.Unlock()
-	if time.Since(windowsReleases.At) < 15*time.Minute {
+	if windowsReleases.Release.Available && time.Since(windowsReleases.At) < 15*time.Minute || !windowsReleases.Release.Available && time.Since(windowsReleases.At) < 30*time.Second {
 		return windowsReleases.Release
 	}
 	client := http.Client{Timeout: 10 * time.Second}

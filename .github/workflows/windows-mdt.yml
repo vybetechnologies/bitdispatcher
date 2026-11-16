@@ -39,6 +39,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Offline map engine build failed" }
           Copy-Item LICENSE,NOTICE desktop/publish/
       - name: Test protected storage, restart recovery and update trust
+        timeout-minutes: 3
         shell: pwsh
         run: |
           $test = Start-Process desktop/publish/LAS.MDT.exe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
@@ -56,6 +57,7 @@ jobs:
           & $nsis /V2 "/DVERSION=$releaseVersion" "/DPAYLOAD=$payload" "/DOUT=$output" desktop/installer.nsi
           if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
       - name: Test install and update preserve local data
+        timeout-minutes: 3
         shell: pwsh
         run: |
           $data = Join-Path $env:LOCALAPPDATA 'Lakes Area Security/MDT'

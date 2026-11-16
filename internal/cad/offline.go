@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+const EvMDTOfflineApplied = "mdt.offline.applied"
+const EvMDTOfflinePosition = "mdt.offline.position"
+
 type OfflineCommandResult struct {
 	Hash, Type, Number, ID, Key string
 	At, Updated                 time.Time
