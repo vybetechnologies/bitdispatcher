@@ -122,6 +122,11 @@ const csrfHeader = "X-BitDispatcher"
 
 // New builds the server and starts the configured integrations.
 func New(s *Server) (*Server, error) {
+	if s.LAS && s.Auth != nil {
+		if err := s.Auth.EnablePersistentSessions(); err != nil {
+			return nil, err
+		}
+	}
 	if s.LAS && s.Eng != nil {
 		s.Eng.EnableLASPeople()
 	}
@@ -363,6 +368,9 @@ func (s *Server) handle(pattern, role string, h handler) {
 			fail(w, http.StatusUnauthorized, "your session ended: sign in again")
 			return
 		}
+		if s.LAS {
+			s.sessionCookie(w, se.ID)
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
 			fail(w, http.StatusForbidden, "missing "+csrfHeader+" header")
 			return
@@ -578,6 +586,14 @@ func (s *Server) routes() {
 
 // ---- sign-in ----
 
+func (s *Server) sessionCookie(w http.ResponseWriter, token string) {
+	c := &http.Cookie{Name: sessionCookie, Value: token, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}
+	if s.LAS {
+		c.MaxAge = 400 * 24 * 60 * 60
+	}
+	http.SetCookie(w, c)
+}
+
 // signedIn records a sign-in and gives the browser its session.
 func (s *Server) signedIn(w http.ResponseWriter, se *auth.Session, extra map[string]string) {
 	data := map[string]string{"from": se.From}
@@ -585,7 +601,7 @@ func (s *Server) signedIn(w http.ResponseWriter, se *auth.Session, extra map[str
 		data[k] = v
 	}
 	s.Eng.Record(actorOf(se), cad.EvSignIn, data)
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: se.ID, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
+	s.sessionCookie(w, se.ID)
 	writeJSON(w, 200, se)
 }
 
@@ -649,6 +665,9 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		if se, ok := s.Auth.Session(c.Value); ok {
+			if s.LAS {
+				s.sessionCookie(w, se.ID)
+			}
 			writeJSON(w, 200, map[string]any{"signedIn": true, "session": se})
 			return
 		}

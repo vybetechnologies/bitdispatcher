@@ -105,14 +105,16 @@ type Session struct {
 
 // Store is the user file and the live sessions.
 type Store struct {
-	mu       sync.Mutex
-	path     string
-	users    map[string]*User
-	sessions map[string]*Session
-	fails    map[string][]time.Time
-	now      func() time.Time
-	Idle     time.Duration
-	MaxAge   time.Duration
+	persistent      bool
+	sessionSnapshot string
+	mu              sync.Mutex
+	path            string
+	users           map[string]*User
+	sessions        map[string]*Session
+	fails           map[string][]time.Time
+	now             func() time.Time
+	Idle            time.Duration
+	MaxAge          time.Duration
 	// The agency's sign-in policy: MFA off, admins or everyone; LockAfter locks a console without input.
 	MFA       string
 	LockAfter time.Duration
@@ -211,7 +213,7 @@ func CheckPassword(p string) string {
 // Empty reports whether there are no users yet.
 func (s *Store) Empty() bool {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	return len(s.users) == 0
 }
 
@@ -225,7 +227,7 @@ func (s *Store) Save(username, name, role, password string, disabled bool) error
 		return errors.New("choose a role")
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	u, ok := s.users[username]
 	if !ok {
 		if password == "" {
@@ -282,7 +284,7 @@ func (s *Store) countAdmins() int {
 // Remove deletes a user and ends their sessions.
 func (s *Store) Remove(username string) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	u, ok := s.users[username]
 	if !ok {
 		return errors.New("no such user")
@@ -306,7 +308,7 @@ func (s *Store) endSessionsOf(username string) {
 // List returns every user without secrets.
 func (s *Store) List() []Public {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	out := []Public{}
 	for _, u := range s.users {
 		out = append(out, Public{Username: u.Username, Name: u.Name, Role: u.Role, Disabled: u.Disabled, Demo: u.Demo, Created: u.Created, LastIn: u.LastIn,
@@ -327,7 +329,7 @@ var ErrBadLogin = errors.New("wrong username or password")
 func (s *Store) Login(username, password, console, from string) (*Session, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	// Hash even for an unknown user, so timing does not say which usernames exist.
 	u, err := s.checkPassword(username, password)
 	if err != nil {
@@ -352,7 +354,7 @@ func demoRole(role string) bool { return role != Admin && role != Field && Valid
 // one user it stops any other.
 func (s *Store) SetDemo(username string, on bool) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	u, ok := s.users[strings.ToLower(username)]
 	if !ok {
 		return errors.New("no such user")
@@ -372,7 +374,7 @@ func (s *Store) SetDemo(username string, on bool) error {
 // Demo is the public demonstration account, when there is one that may sign in.
 func (s *Store) Demo() (Public, bool) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	for _, u := range s.users {
 		if u.Demo && !u.Disabled && demoRole(u.Role) {
 			return Public{Username: u.Username, Name: u.Name, Role: u.Role, Demo: true, Duties: u.duties()}, true
@@ -385,7 +387,7 @@ func (s *Store) Demo() (Public, bool) {
 // elsewhere never lock this out.
 func (s *Store) LoginDemo(console, from, duty string) (*Session, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	for _, u := range s.users {
 		if u.Demo && !u.Disabled && demoRole(u.Role) {
 			se := s.open(u, console, from)
@@ -417,20 +419,20 @@ func (s *Store) open(u *User, console, from string) *Session {
 // Session returns the live session for a token, extending it.
 func (s *Store) Session(id string) (*Session, bool) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	se, ok := s.sessions[id]
 	if !ok {
 		return nil, false
 	}
 	now := s.now()
-	if now.Sub(se.Last) > s.Idle || now.Sub(se.Created) > s.MaxAge {
+	if !s.persistent && (now.Sub(se.Last) > s.Idle || now.Sub(se.Created) > s.MaxAge) {
 		delete(s.sessions, id)
 		return nil, false
 	}
 	se.Last = now
 	// The inactivity lock: no input at the console for the policy's minutes. Field terminals in a moving
 	// vehicle, a read-only station screen in a firehouse and the training board are left alone.
-	if s.LockAfter > 0 && !se.Locked && se.Role != Field && !StationScreen(se) && !se.Active.IsZero() && now.Sub(se.Active) > s.LockAfter {
+	if !s.persistent && s.LockAfter > 0 && !se.Locked && se.Role != Field && !StationScreen(se) && !se.Active.IsZero() && now.Sub(se.Active) > s.LockAfter {
 		se.Locked, se.LockedAt = true, now
 		if s.OnLock != nil {
 			cp := *se
@@ -444,7 +446,7 @@ func (s *Store) Session(id string) (*Session, bool) {
 // SetConsole changes the position a session is at (a field crew's unit, normalised).
 func (s *Store) SetConsole(id, console string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	if se, ok := s.sessions[id]; ok {
 		se.Console = console
 		if se.Role != Field {
@@ -456,7 +458,7 @@ func (s *Store) SetConsole(id, console string) {
 // SetTraining puts a session in the training environment: a shared exercise, or a practice board of its own.
 func (s *Store) SetTraining(id, exercise string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	if se, ok := s.sessions[id]; ok {
 		se.Training, se.Exercise = true, exercise
 	}
@@ -465,7 +467,7 @@ func (s *Store) SetTraining(id, exercise string) {
 // SetWorkstation records the enrolled workstation a session signed in at.
 func (s *Store) SetWorkstation(id, ws string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	if se, ok := s.sessions[id]; ok {
 		se.Workstation = ws
 	}
@@ -474,7 +476,7 @@ func (s *Store) SetWorkstation(id, ws string) {
 // Logout ends a session.
 func (s *Store) Logout(id string) (*Session, bool) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	se, ok := s.sessions[id]
 	delete(s.sessions, id)
 	return se, ok
@@ -483,11 +485,11 @@ func (s *Store) Logout(id string) (*Session, bool) {
 // Active lists signed-in sessions, for the supervisor's position view.
 func (s *Store) Active() []Session {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	out := []Session{}
 	now := s.now()
 	for _, se := range s.sessions {
-		if now.Sub(se.Last) <= s.Idle {
+		if s.persistent || now.Sub(se.Last) <= s.Idle {
 			out = append(out, *se)
 		}
 	}

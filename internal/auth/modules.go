@@ -9,7 +9,7 @@ import (
 // ModuleAccess returns only the signed-in account's current grants, never cached session rights.
 func (s *Store) ModuleAccess(username string) (Public, bool) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	u := s.users[strings.ToLower(username)]
 	if u == nil || u.Disabled {
 		return Public{}, false
@@ -20,7 +20,7 @@ func (s *Store) ModuleAccess(username string) (Public, bool) {
 // SwitchDuty changes work within the same authenticated identity. It cannot grant a new duty.
 func (s *Store) SwitchDuty(id, duty string) (*Session, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	se := s.sessions[id]
 	if se == nil {
 		return nil, errors.New("sign in again")

@@ -145,7 +145,7 @@ func (s *Store) SetDuties(username string, duties []string) error {
 	}
 	role := RoleForDuties(clean)
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	u, ok := s.users[strings.ToLower(username)]
 	if !ok {
 		return errors.New("no such user")
@@ -205,7 +205,7 @@ func (s *Store) mfaRequired(u *User) bool {
 func (s *Store) SignIn(r Request) (*Session, *Need, error) {
 	username := strings.ToLower(strings.TrimSpace(r.Username))
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	u, err := s.checkPassword(username, r.Password)
 	if err != nil {
 		return nil, nil, err
@@ -305,7 +305,7 @@ func (s *Store) fail(username string) { s.fails[username] = append(s.fails[usern
 // ResetMFA removes a person's authenticator, so they set it up again at their next sign-in.
 func (s *Store) ResetMFA(username string) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	u, ok := s.users[strings.ToLower(username)]
 	if !ok {
 		return errors.New("no such user")
@@ -319,7 +319,7 @@ func (s *Store) ResetMFA(username string) error {
 // Lock locks a session's console: nothing is shown or changed until the same person unlocks it.
 func (s *Store) Lock(id string) (*Session, bool) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	se, ok := s.sessions[id]
 	if !ok {
 		return nil, false
@@ -334,7 +334,7 @@ func (s *Store) Lock(id string) (*Session, bool) {
 // Unlock unlocks a session with its person's password (and code, when they use one).
 func (s *Store) Unlock(id, password, code string) (*Session, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	se, ok := s.sessions[id]
 	if !ok {
 		return nil, errors.New("signed out")
@@ -363,7 +363,7 @@ func (s *Store) Unlock(id, password, code string) (*Session, error) {
 // Touch records input at a console (a key, a click): the inactivity lock counts from it.
 func (s *Store) Touch(id string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	if se, ok := s.sessions[id]; ok && !se.Locked {
 		se.Active = s.now()
 	}
@@ -456,14 +456,14 @@ func checkTOTP(secret, code string, now time.Time, used int64) (int64, bool) {
 // authenticator apps show.
 func (s *Store) SetPolicy(mfa string, lockAfter time.Duration, issuer string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	s.MFA, s.LockAfter, s.Issuer = mfa, lockAfter, issuer
 }
 
 // UserRole is a person's role (their highest rights), whatever duty they are working now.
 func (s *Store) UserRole(username string) string {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	if u, ok := s.users[strings.ToLower(username)]; ok {
 		return u.Role
 	}

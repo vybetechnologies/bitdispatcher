@@ -8,7 +8,7 @@ import (
 // MDTUnitFor is looked up on every request so a revoked assignment takes effect immediately.
 func (s *Store) MDTUnitFor(username string) string {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	if u := s.users[strings.ToLower(username)]; u != nil && !u.Disabled {
 		return u.MDTUnit
 	}
@@ -18,7 +18,7 @@ func (s *Store) MDTUnitFor(username string) string {
 // SetMDTUnit binds a named account to one terminal unit without changing duties or credentials.
 func (s *Store) SetMDTUnit(username, unit string) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.unlock()
 	username = strings.ToLower(strings.TrimSpace(username))
 	unit = strings.ToUpper(strings.TrimSpace(unit))
 	u := s.users[username]

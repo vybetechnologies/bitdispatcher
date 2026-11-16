@@ -20,7 +20,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go test ./...
 RUN CGO_ENABLED=0 go build -trimpath \
-      -ldflags "-s -w -X main.version=v0.1.0-las12" \
+      -ldflags "-s -w -X main.version=v0.1.0-las13" \
       -o /out/bitdispatcher ./cmd/bitdispatcher
 
 FROM caddy:2 AS caddy

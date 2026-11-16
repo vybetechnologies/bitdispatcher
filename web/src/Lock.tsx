@@ -3,6 +3,7 @@ import { Lock as LockIcon, LogOut, Unlock } from 'lucide-react'
 import { api, ApiError, errText } from './api'
 import { checkMe, signOut, store, useStore } from './store'
 import { Logo } from './ui'
+import { BRAND } from './brand'
 
 /** Locks this console now: everything stays open underneath, nothing is shown until its person unlocks. */
 export async function lockNow() {
@@ -40,7 +41,7 @@ export function LockGuard() {
     const evs = ['keydown', 'pointerdown', 'wheel'] as const
     evs.forEach((e) => window.addEventListener(e, on, { passive: true }))
     const t = window.setInterval(() => {
-      if (lockMinutes > 0 && !store.get().me?.locked && Date.now() - last.current > lockMinutes * 60_000) lockNow()
+      if (!BRAND.las && lockMinutes > 0 && !store.get().me?.locked && Date.now() - last.current > lockMinutes * 60_000) lockNow()
     }, 15_000)
     return () => {
       evs.forEach((e) => window.removeEventListener(e, on))
