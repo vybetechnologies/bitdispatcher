@@ -54,7 +54,12 @@ try{
   await page.getByRole('button',{name:'My reports',exact:true}).click()
   await page.getByRole('dialog',{name:'My reports'}).waitFor()
   assert(await emergency.isVisible());await page.screenshot({path:`${out}/${native?'windows':'web'}-reports.png`})
-  await page.getByRole('button',{name:'Close reports'}).click()
+  const beforeEmergency=writes.length
+  const emergencyBox=await emergency.boundingBox()
+  await page.mouse.move(emergencyBox.x+emergencyBox.width/2,emergencyBox.y+emergencyBox.height/2)
+  await page.mouse.down();await page.waitForTimeout(2200);await page.mouse.up();await page.waitForTimeout(250)
+  assert(writes.slice(beforeEmergency).some(w=>w.path==='/mdt/emergency'||w.path==='/mdt/offline/sync'&&JSON.parse(w.body).Path==='/mdt/emergency'),'Reports drawer prevented the emergency hold')
+  if(await page.getByRole('button',{name:'Close reports'}).count())await page.getByRole('button',{name:'Close reports'}).click()
   await page.getByRole('button',{name:'Voice settings',exact:true}).click()
   await page.getByRole('dialog',{name:'Voice settings'}).waitFor();await page.keyboard.press('Escape')
   await page.getByRole('button',{name:'Persons & vehicles',exact:true}).click()
