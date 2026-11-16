@@ -7,6 +7,15 @@ vi.mock('../ui',()=>({Modal:({children,title}:{children:React.ReactNode;title:st
 afterEach(()=>{cleanup();vi.restoreAllMocks()})
 const empty={kind:'person',items:[],more:false,source:'LAS CAD records',searchedAt:'2026-11-15T12:00:00Z'}
 describe('MDT private record lookup',()=>{
+ it('distinguishes a provider failure from no local matches',async()=>{
+  vi.spyOn(api,'post').mockResolvedValue({...empty,providerMessage:'Enformion Person Search is not enabled for this API access profile.'})
+  render(<RecordSearch onClose={()=>{}}/>)
+  fireEvent.change(screen.getByLabelText('Name or alias'),{target:{value:'Test Person'}})
+  fireEvent.click(screen.getByRole('button',{name:'Search LAS records'}))
+  await waitFor(()=>expect(screen.getByText(/not enabled for this API access profile/)).toBeTruthy())
+  expect(screen.getByText('No matching LAS records.',{exact:false})).toBeTruthy()
+ })
+
  it('sends a core caution and responder instruction to the MDT voice handler on each search',async()=>{
   const caution=vi.fn()
   vi.spyOn(api,'post').mockResolvedValue({...empty,items:[{record:'LASR-1',seen:empty.searchedAt,name:'Test Person',flags:[{id:'FL1',title:'Core caution tag',warning:'Test safety warning',instruction:'Contact dispatch'}]}]})

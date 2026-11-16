@@ -74,6 +74,9 @@ func decodeEnformion(data []byte) ([]enformionPerson, error) {
 	for key, value := range obj {
 		obj[strings.ToLower(key)] = value
 	}
+	if string(obj["iserror"]) == "true" {
+		return nil, fmt.Errorf("Enformion reported a search error; local records are unchanged")
+	}
 	if raw, ok := obj["persons"]; ok {
 		var people []enformionPerson
 		if err := json.Unmarshal(raw, &people); err != nil {

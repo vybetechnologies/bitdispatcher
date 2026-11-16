@@ -12,7 +12,7 @@ Provider failures show a separate message, never a claim that no provider record
 
 ## Account activation
 
-The existing key was configured in production hosting secrets. A vendor-example authentication probe on 2026-11-15 returned HTTP 400: Access Profile does not permit client to call Person Search. The portal shows Free plan and Person Search 0 out of 0 requests. Enformion must enable Person Search on the existing access profile. No subscription upgrade or purchase was made.
+The existing key was configured in production hosting secrets. A vendor-example authentication probe on 2026-11-15 returned HTTP 400: Access Profile does not permit client to call Person Search. The portal trial demo was verified separately and succeeds with 100 free matches. The restriction is specific to the existing external API key/profile, not the account trial demo. The same exact demo request was tested with that key and rejected. The profile needs API Person Search permission. No subscription upgrade or purchase was made.
 
 ## Verification
 

@@ -215,12 +215,12 @@ func (s *Server) mdtLookupRoutes() {
 							refs = append(refs, ref)
 						}
 					}
-					hits = append(hits, mdtLookupHit{Flags: flags, Person: &p, Incidents: refs, Source: r.Source, Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety || len(flags) > 0})
+					hits = append(hits, mdtLookupHit{Flags: flags, Person: &p, Incidents: refs, Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety || len(flags) > 0})
 				} else {
 					if plate != "" && !strings.Contains(lookupID(r.Plate), plate) || vin != "" && !strings.Contains(lookupID(r.VIN), vin) || q.State != "" && !strings.EqualFold(q.State, r.State) {
 						continue
 					}
-					hits = append(hits, mdtLookupHit{Source: r.Source, Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
+					hits = append(hits, mdtLookupHit{Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
 				}
 			}
 		})
@@ -265,4 +265,11 @@ func (s *Server) mdtLookupRoutes() {
 		w.Header().Set("Cache-Control", "no-store")
 		writeJSON(w, 200, map[string]any{"kind": q.Kind, "items": hits, "more": more, "source": "LAS CAD records", "providerMessage": providerMessage, "searchedAt": now.UTC()})
 	})
+}
+
+func lasLookupSource(r cad.LASRecord) string {
+	if r.Source == "EnformionGO" {
+		return r.Source
+	}
+	return "LAS directory"
 }
