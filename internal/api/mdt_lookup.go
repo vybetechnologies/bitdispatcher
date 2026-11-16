@@ -201,7 +201,7 @@ func (s *Server) mdtLookupRoutes() {
 				if q.Kind == "person" {
 					p := cad.LASRecordPerson(r)
 					flags := []*cad.Flag{}
-					for _, f := range st.LASPersonFlags(r.ID,p,now) {
+					for _, f := range st.LASPersonFlags(r.ID, p, now) {
 						flags = append(flags, st.FlagFor(f, cad.DutyOf(a), a.Role))
 					}
 					if lookupMinor(r.DOB, p.ApproxAge, now) || !lookupNameMatches(name, p) || (q.DOB != "" && q.DOB != r.DOB) {

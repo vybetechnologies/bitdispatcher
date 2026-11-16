@@ -72,6 +72,12 @@ func TestLASRichPersonRecordConnectsIncidentAndMDTWithCoreFlags(t *testing.T) {
 	if code != 200 {
 		t.Fatal(code, string(body))
 	}
+	code, body = admin.do("POST", "/api/mdt/records/search", map[string]string{"kind": "person", "name": "Shared Corrected", "purpose": "patrol"}, true)
+	result.Items = nil
+	json.Unmarshal(body, &result)
+	if code != 200 || len(result.Items) != 1 || len(result.Items[0].Flags) != 1 {
+		t.Fatal("identity correction lost the core record warning", code, string(body))
+	}
 	s.Eng.Read(func(st *cad.State) {
 		in := st.Incidents[numbers[0]]
 		if len(st.IncidentFlags(in, s.Eng.Now())) != 1 {

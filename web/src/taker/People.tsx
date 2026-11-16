@@ -481,6 +481,7 @@ export function PersonForm({ value, roles, codes, onCancel, onSave, recordMode =
             Other ID number
             <input className="input h-7 text-xs" value={p.idNumber ?? ''} onChange={(e) => set({ idNumber: e.target.value })} />
           </label>
+          <CodeSelect id="pf-idstate" label="Other ID state" list={listOf(codes, 'state')} value={p.idState} onChange={v=>set({idState:v})}/>
           <label className="flex flex-col gap-0.5 text-[11px] text-slate-400" htmlFor="pf-dob">
             Date of birth
             <input id="pf-dob" type="date" className="input h-7 text-xs" value={p.dob && /^\d{4}-\d{2}-\d{2}$/.test(p.dob) ? p.dob : ''} onChange={(e) => set({ dob: e.target.value })} />
