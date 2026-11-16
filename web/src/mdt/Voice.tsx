@@ -3,16 +3,17 @@ import { Volume2, VolumeX, RotateCcw } from 'lucide-react'
 import type { MDTView } from './Mdt'
 import type { CommView } from '../types'
 import { statusMeta } from '../util'
+import type { WeatherFeature } from '../WeatherAlerts'
 
 export type Announcement = { id: string; text: string; priority: number }
 const words = (s?: string) => (s || '').replace(/\s+/g,' ').trim().slice(0,600)
 /** Input is only the assigned unit's already-authorized terminal/inbox data. */
-export function voiceSnapshot(m: MDTView, messages: CommView[]): Announcement[] {
+export function voiceSnapshot(m: MDTView, messages: CommView[], weather: WeatherFeature[] = []): Announcement[] {
   const out: Announcement[]=[]
   const add=(id:string,text:string,priority=2)=>out.push({id,text:words(text),priority})
   const i=m.incident
   add('assignment',i ? `Assigned call ${i.number}. ${m.typeName || i.type}. Priority ${i.priority}. ${words(i.location?.address)}.` : 'No call assigned.')
-  add('status',`Unit ${m.unit.id}. Status ${statusMeta(m.unit.status).label}.`)
+  add('status',`Unit ${m.unit.id}. Status ${statusMeta(m.unit.status).label}.`,1)
   if(i) {
     add('call-status',`Call ${i.number}. ${i.status}. Priority ${i.priority}.`)
     if(i.newLocation) add('location-change',`Dispatch changed the call location. ${words(i.newLocation.location.address)}`,0)
@@ -24,10 +25,15 @@ export function voiceSnapshot(m: MDTView, messages: CommView[]): Announcement[] 
     for(const n of (i.timeline || []).filter(n=>n.priority).slice(-5)) add(`note:${i.number}:${n.seq}`,`Priority dispatch note. ${words(n.text)}`,0)
   }
   if(m.emergency) add('emergency',m.emergency.ackedBy ? 'Dispatch acknowledged your emergency.' : 'Emergency sent. Waiting for dispatch acknowledgement.',0)
-  for(const message of (m.messages || []).filter(x=>!x.fromUnit).slice(-5)) add('message:'+message.id,`${message.urgent?'Urgent dispatch alert':'Message from dispatch'}. ${words(message.text)}`,message.urgent?0:1)
+  for(const message of (m.messages || []).filter(x=>x.from!==m.unit.id).slice(-12)) add('message:'+message.id,`${message.urgent?'Urgent message':'Message'} from ${message.fromUnit ? 'unit ' : ''}${words(message.from)}. ${words(message.text)}`,message.urgent?0:2)
   for(const b of m.bolos || []) add('bolo:'+b.id,`BOLO. ${words(b.text)}. ${b.plate ? 'Plate '+words(b.plate) : ''}`,1)
   for(const c of messages.filter(c=>(c.state==='active'||c.state==='updated') && (!c.expires || Date.parse(c.expires)>Date.now()))) {
-    if(c.kind==='bolo'||c.kind==='safety'||c.priority==='urgent'||c.priority==='high') add('comm:'+c.id,`${c.kind==='safety'?'Safety warning':c.kind==='bolo'?'BOLO':'Dispatch alert'}. ${words(c.subject)}. ${words(c.body)}`,c.kind==='safety'||c.priority==='urgent'?0:1)
+    if(!c.mine) add('comm:'+c.id,`${c.kind==='safety'?'Safety warning':c.kind==='bolo'?'BOLO':'Message'}. ${words(c.subject)}. ${words(c.body)}`,c.kind==='safety'||c.priority==='urgent'?0:c.priority==='high'||c.kind==='bolo'?1:2)
+  }
+  for(const f of weather) {
+    const p=f.properties
+    if(Date.parse(p.expires)<=Date.now() || (p.ends && Date.parse(p.ends)<=Date.now()))continue
+    add('weather:'+f.id,`National Weather Service. ${words(p.event)} for ${words(p.areaDesc)}. ${words(p.headline)}. ${words(p.instruction || p.description)}`,/warning/i.test(p.event)||p.severity==='Extreme'||p.severity==='Severe'?0:1)
   }
   return out.sort((a,b)=>a.priority-b.priority)
 }
@@ -35,7 +41,7 @@ export function changedAnnouncements(before: Map<string,string>, next: Announcem
   return next.filter(n=>before.get(n.id)!==n.text)
 }
 
-export default function MdtVoice({ m, messages, connected }: {m:MDTView|null;messages:CommView[];connected:boolean}) {
+export default function MdtVoice({ m, messages, weather = [], connected }: {m:MDTView|null;messages:CommView[];weather?:WeatherFeature[];connected:boolean}) {
   const [enabled,setEnabled]=useState(false)
   const [voices,setVoices]=useState<SpeechSynthesisVoice[]>([])
   const [voice,setVoice]=useState('')
@@ -77,7 +83,12 @@ export default function MdtVoice({ m, messages, connected }: {m:MDTView|null;mes
     speechSynthesis.speak(u)
   }
   const enqueue=(items:Announcement[])=>{
-    if(items.some(i=>i.priority===0)&&speaking.current)stop()
+    if(speaking.current && items.some(i=>i.priority<(currentSpoken.current?.priority ?? 2))) {
+      const interrupted=currentSpoken.current
+      const rest=pending.current
+      stop()
+      pending.current=[...(interrupted && interrupted.id!=='ready' ? [interrupted] : []),...rest]
+    }
     const merged=new Map(pending.current.map(i=>[i.id,i]))
     items.forEach(i=>merged.set(i.id,i))
     pending.current=[...merged.values()].sort((a,b)=>a.priority-b.priority).slice(0,12)
@@ -100,19 +111,26 @@ export default function MdtVoice({ m, messages, connected }: {m:MDTView|null;mes
   useEffect(()=>{
     if(!enabled||!m)return
     if(!connected){stop();return}
-    const next=voiceSnapshot(m,messages)
+    const next=voiceSnapshot(m,messages,weather)
     const changed=changedAnnouncements(seen.current,next)
     const current=currentSpoken.current
-    if(current && seen.current.has(current.id) && !next.some(n=>n.id===current.id && n.text===current.text))stop()
-    if(seen.current.has('assignment') && changed.some(n=>n.id==='assignment'))stop()
-    seen.current=new Map(next.map(n=>[n.id,n.text]))
+    if((current && seen.current.has(current.id) && !next.some(n=>n.id===current.id && n.text===current.text)) ||
+      (seen.current.has('assignment') && changed.some(n=>n.id==='assignment'))) {
+      const rest=pending.current
+      stop()
+      pending.current=rest
+    }
+    // Remember delivered snapshots across temporary feed outages, so recovery
+    // does not replay unchanged messages/weather. Bound this session history.
+    for(const n of next)seen.current.set(n.id,n.text)
+    while(seen.current.size>512)seen.current.delete(seen.current.keys().next().value!)
     // Drop withdrawn/superseded items, including cleared assignments and BOLOs.
-    const live=new Set(next.map(n=>n.id))
-    pending.current=pending.current.filter(n=>live.has(n.id))
+    const live=new Map(next.map(n=>[n.id,n.text]))
+    pending.current=pending.current.filter(n=>live.get(n.id)===n.text)
     enqueue(changed)
     // Speech callbacks read current settings through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[enabled,m,messages,connected])
+  },[enabled,m,messages,weather,connected])
   useEffect(()=>{
     const cancel=()=>off()
     window.addEventListener('bd:locked',cancel);window.addEventListener('bd:signedout',cancel)

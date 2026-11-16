@@ -28,3 +28,10 @@ it('does not claim no alerts during an outage',async()=>{
  expect(screen.queryByText(/No active NWS/)).toBeNull()
  expect(screen.getByText(/Weather coverage is not current/)).toBeTruthy()
 })
+it('shares only fresh active weather with the MDT voice reader',async()=>{
+ const spoken=vi.fn()
+ vi.spyOn(api,'get').mockResolvedValue({...feed,stale:true})
+ render(<WeatherAlerts map={{current:null}} ready={false} onAlerts={spoken}/>)
+ await waitFor(()=>expect(screen.getByText('NWS unavailable / stale')).toBeTruthy())
+ expect(spoken.mock.calls.every(([alerts])=>alerts.length===0)).toBe(true)
+})

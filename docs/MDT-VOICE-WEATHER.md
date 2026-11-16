@@ -11,8 +11,16 @@ sleep, browser suspension and device audio restrictions can interrupt speech.
 It announces the assigned unit's current status and call assignment, call status
 and priority changes, changed locations, site hazards, flags, cautions, active
 papers, priority notes, emergencies, dispatch messages, BOLOs and urgent/high
-communications. Only existing authorized MDT/inbox data is consumed. Identical
-poll results do not repeat. Updated/withdrawn items replace queued speech; safety
+communications. Only existing authorized MDT/inbox data is consumed.
+Routine inbox messages and incoming messages from
+other units are spoken too; the officer's own outgoing messages are excluded.
+Successful MDT status changes speak their confirmed status when the terminal
+refresh returns it. Fresh active NWS alerts from the map's same feed are spoken
+with event, affected area, headline and instructions. Updated weather instructions
+are announced; expired or stale weather cannot start a new announcement. Feed
+recovery does not replay unchanged alerts. Urgent speech interrupts routine speech
+while preserving still-current queued status confirmations and messages.
+Identical poll results do not repeat. Updated/withdrawn items replace queued speech; safety
 warnings interrupt routine speech. The queue is bounded to 12 announcements and
 each announcement to 600 characters, rather than accumulating old updates.
 Speech stops on lost live terminal data, lock, sign-out, mute or leaving the MDT.

@@ -15,7 +15,7 @@ export function weatherColor(event: string) {
 }
 
 /** Same public, server-cached feed on desk and vehicle maps; enabled by default. */
-export default function WeatherAlerts({ map, ready }: { map: React.RefObject<GLMap | null>; ready: boolean }) {
+export default function WeatherAlerts({ map, ready, onAlerts }: { map: React.RefObject<GLMap | null>; ready: boolean; onAlerts?: (alerts: WeatherFeature[]) => void }) {
   const [feed, setFeed] = useState<WeatherFeed | null>(null)
   const [failed, setFailed] = useState(false)
   const [now, setNow] = useState(Date.now())
@@ -35,6 +35,10 @@ export default function WeatherAlerts({ map, ready }: { map: React.RefObject<GLM
   }, [])
   const alerts = liveWeather(feed, now).sort((a,b) => ['Extreme','Severe','Moderate','Minor','Unknown'].indexOf(a.properties.severity) - ['Extreme','Severe','Moderate','Minor','Unknown'].indexOf(b.properties.severity))
   const stale = failed || feed?.stale || (!!feed?.checked && now - Date.parse(feed.checked) > 2 * 60000)
+  useEffect(() => {
+    // Only fresh, still-active NWS products may start a spoken announcement.
+    onAlerts?.(stale ? [] : liveWeather(feed, now))
+  }, [feed, now, stale, onAlerts])
   useEffect(() => {
     const m = map.current
     if (!m || !ready) return
