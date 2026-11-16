@@ -14,6 +14,22 @@ function storageFixture(){
  return files
 }
 describe('Windows MDT durable offline work',()=>{
+ it('isolates training work and refuses to sync it to a live session',async()=>{
+  const files=storageFixture()
+  const training={username:'alex',name:'Alex',role:'field',duty:'field',mdtUnit:'U1',training:true,exercise:'EX1'}
+  files.set('identity',JSON.stringify({session:training}))
+  files.set('cache:alex|U1|training:EX1:/mdt',files.get('cache:alex|U1:/mdt')!)
+  vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')))
+  const desktop=await import('./desktop')
+  await desktop.desktopRequest('POST','/mdt/status',{status:'oos'})
+  expect((await desktop.desktopOutbox())[0].Context).toBe('training:EX1')
+  expect(files.get('queue:alex|U1')).toBeUndefined()
+  const fetch=vi.fn(async()=>new Response(JSON.stringify({signedIn:true,session:{username:'alex',mdtUnit:'U1'}})))
+  vi.stubGlobal('fetch',fetch)
+  await desktop.syncDesktop()
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(await desktop.desktopOutbox()).toHaveLength(1)
+ })
  it('keeps an own-unit status during an outage and syncs it once connected',async()=>{
   const files=storageFixture();vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')))
   const desktop=await import('./desktop')

@@ -17,15 +17,20 @@ import (
 
 // Actor is who does something: a signed-in person at a position, or a system (bitvoice, ali, radio).
 type Actor struct {
-	ClientCommand string
-	ClientHash    string
-	ClientAt      time.Time
-	User          string
-	Role          string
-	Session       string
-	Console       string
-	Duty          string // the work the person signed in to do: calltaker, police, fire, ems, dispatcher, supervisor, admin
-	Agency        string // the agency the person is working for (agency.go), when agencies are configured
+	ClientUnit          string    `json:"-"`
+	ClientIncident      string    `json:"-"`
+	ClientStatusAt      time.Time `json:"-"`
+	ClientReport        string    `json:"-"`
+	ClientReportUpdated time.Time `json:"-"`
+	ClientCommand       string
+	ClientHash          string
+	ClientAt            time.Time
+	User                string
+	Role                string
+	Session             string
+	Console             string
+	Duty                string // the work the person signed in to do: calltaker, police, fire, ems, dispatcher, supervisor, admin
+	Agency              string // the agency the person is working for (agency.go), when agencies are configured
 }
 
 // System actors.
@@ -162,6 +167,23 @@ type refs struct {
 
 // write appends and applies one event. The caller holds e.mu.
 func (e *Engine) write(a Actor, typ string, r refs, data any) (ledger.Event, error) {
+	// Validate offline bases under the same lock as the durable write.
+	if a.ClientCommand != "" {
+		if _, applied := e.st.clientCommands[a.User+"|"+a.ClientCommand]; !applied {
+			if a.ClientUnit != "" && r.Unit == a.ClientUnit && !a.ClientStatusAt.IsZero() {
+				u := e.st.Units[a.ClientUnit]
+				if u == nil || !u.StatusAt.Equal(a.ClientStatusAt) || u.Incident != a.ClientIncident {
+					return ledger.Event{}, problem("offlineConflict", "Dispatch changed this unit or call; review the saved action.")
+				}
+			}
+			if a.ClientReport != "" {
+				rp := e.st.Reports[a.ClientReport]
+				if rp == nil || !rp.Updated.Equal(a.ClientReportUpdated) {
+					return ledger.Event{}, problem("offlineConflict", "This report changed on the server; retain and review the local draft.")
+				}
+			}
+		}
+	}
 	var raw json.RawMessage
 	if data != nil {
 		b, err := json.Marshal(data)

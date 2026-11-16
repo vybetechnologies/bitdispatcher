@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>LAS.MDT</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Company>Lakes Area Security Corporation</Company>
     <Product>Lakes Area Security MDT</Product>
     <Description>Lakes Area Security Windows mobile data terminal</Description>

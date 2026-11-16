@@ -5,7 +5,7 @@ declare global {
  interface Window { lasDesktop?:{version:string;call:(op:string,key?:string,value?:unknown)=>Promise<unknown>} }
 }
 export const isWindowsMdt=()=>!!window.lasDesktop
-export type DesktopCommand={ID:string;Owner:string;Unit:string;Method:string;Path:string;Body:Record<string,unknown>;Incident:string;BaseStatusAt:string;At:string;error?:string;status?:number;localReport?:string;Binary?:string;FileName?:string;Caption?:string}
+export type DesktopCommand={ID:string;Owner:string;Unit:string;Context:string;Method:string;Path:string;Body:Record<string,unknown>;Incident:string;BaseStatusAt:string;At:string;error?:string;status?:number;localReport?:string;Binary?:string;FileName?:string;Caption?:string}
 export type DesktopState={connected:boolean;pending:number;lastSync:number;error:string;preparing:boolean}
 let state:DesktopState={connected:true,pending:0,lastSync:0,error:'',preparing:false}
 let identity:{session:Session}|null=null
@@ -25,7 +25,8 @@ function announce(update:Partial<DesktopState>){
 }
 async function read<T>(key:string):Promise<T|null>{const value=await window.lasDesktop!.call('read',key);return typeof value==='string'?JSON.parse(value) as T:null}
 async function save(key:string,value:unknown){await window.lasDesktop!.call('write',key,JSON.stringify(value))}
-const scope=()=>identity?.session.username+'|'+identity?.session.mdtUnit
+const workContext=(s:Session)=>s.training?'training:'+(s.exercise||s.hash):'live'
+const scope=()=>identity?.session.username+'|'+identity?.session.mdtUnit+(identity?.session.training?'|'+workContext(identity.session):'')
 const queueKey=()=> 'queue:'+scope()
 const commandKey=(id:string)=>'command:'+scope()+':'+id
 const cacheKey=(path:string)=>'cache:'+scope()+':'+path
@@ -89,7 +90,7 @@ async function queueWrite(method:string,path:string,body:Record<string,unknown>,
  if(!identity?.session.mdtUnit)throw new Error('Sign in online with your assigned MDT unit before working offline.')
  const cachedMdt=await cached<MDTView>('/mdt');if(!cachedMdt)throw new Error('Open the MDT online once before recording offline actions.')
  const m=await project(cachedMdt.data);const id=crypto.randomUUID()
- const cmd:DesktopCommand={ID:id,Owner:identity.session.username,Unit:identity.session.mdtUnit,Method:method,Path:path,Body:structuredClone(body),Incident:m.unit.incident||'',BaseStatusAt:m.offlineStatusAt||m.unit.statusAt,At:new Date().toISOString(),...extra}
+ const cmd:DesktopCommand={ID:id,Context:workContext(identity.session),Owner:identity.session.username,Unit:identity.session.mdtUnit,Method:method,Path:path,Body:structuredClone(body),Incident:m.unit.incident||'',BaseStatusAt:m.offlineStatusAt||m.unit.statusAt,At:new Date().toISOString(),...extra}
  if(path==='/rms/reports'&&!body.number){cmd.localReport='OFFLINE-'+id}
  await save(commandKey(id),cmd);await save(queueKey(),[...await ids(),id]);await refreshCount()
  if(path==='/rms/reports'){
@@ -111,7 +112,7 @@ export async function syncDesktop(){
   try{
    const meResponse=await network('GET','/auth/me');if(!meResponse.ok)throw new Error('Sign in again to sync saved work.')
    const me=await meResponse.json() as {signedIn:boolean;session?:Session}
-   if(!me.signedIn||me.session?.username!==identity.session.username||me.session.mdtUnit!==identity.session.mdtUnit){announce({error:'Saved work is bound to its original account and unit. Sign in with that account to sync.'});return}
+   if(!me.signedIn||me.session?.username!==identity.session.username||me.session.mdtUnit!==identity.session.mdtUnit||workContext(me.session)!==workContext(identity.session)){announce({error:'Saved work is bound to its original account and unit. Sign in with that account to sync.'});return}
    announce({connected:true})
    for(;;){
     const list=await desktopOutbox();const cmd=list.find(x=>x.Path==='/mdt/emergency')||list[0];if(!cmd)break

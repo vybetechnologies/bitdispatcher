@@ -393,6 +393,8 @@ func (s *Server) handle(pattern, role string, h handler) {
 			a.ClientCommand = meta.ID
 			a.ClientHash = meta.Hash
 			a.ClientAt = meta.At
+			a.ClientUnit, a.ClientIncident, a.ClientStatusAt = meta.Unit, meta.Incident, meta.StatusAt
+			a.ClientReport, a.ClientReportUpdated = meta.Report, meta.ReportUpdated
 		}
 		a.Agency = s.workingAgency(se)
 		// Supervisory views are the agency's to give: a direct request without the right is refused.

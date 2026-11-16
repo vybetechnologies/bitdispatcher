@@ -21,7 +21,12 @@ func TestDesktopOfflineUnitBindingDeduplicationAndConflicts(t *testing.T) {
 	client := login(t, ts, "admin", pw["admin"])
 	var at time.Time
 	s.Eng.Read(func(st *cad.State) { at = st.Units["LAS1"].StatusAt })
-	cmd := desktopCommand{ID: "fixture-command-00000001", Owner: "admin", Unit: "LAS1", Method: "POST", Path: "/mdt/status", Body: json.RawMessage(`{"status":"available"}`), BaseStatusAt: at.Format(time.RFC3339Nano), At: time.Now().Add(-time.Minute)}
+	cmd := desktopCommand{Context: "live", ID: "fixture-command-00000001", Owner: "admin", Unit: "LAS1", Method: "POST", Path: "/mdt/status", Body: json.RawMessage(`{"status":"available"}`), BaseStatusAt: at.Format(time.RFC3339Nano), At: time.Now().Add(-time.Minute)}
+	cmd.Context = "training:fixture"
+	if code, _ := client.do("POST", "/api/mdt/offline/sync", cmd, true); code != 409 {
+		t.Fatal("training work accepted on the live board", code)
+	}
+	cmd.Context = "live"
 	code, body := client.do("POST", "/api/mdt/offline/sync", cmd, true)
 	if code != 204 {
 		t.Fatal(code, string(body))

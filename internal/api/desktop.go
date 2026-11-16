@@ -20,10 +20,13 @@ import (
 
 type offlineCommandKey struct{}
 type offlineCommandMeta struct {
-	ID, Hash string
-	At       time.Time
+	Unit, Incident, Report  string
+	StatusAt, ReportUpdated time.Time
+	ID, Hash                string
+	At                      time.Time
 }
 type desktopCommand struct {
+	Context                   string
 	ID                        string
 	Owner                     string
 	Unit                      string
@@ -74,6 +77,19 @@ func (s *Server) desktopRoutes() {
 			return
 		}
 		s.offlineMu.Lock()
+		expectedContext := "live"
+		if se.Training {
+			board := se.Exercise
+			if board == "" {
+				board = se.Hash
+			}
+			expectedContext = "training:" + board
+		}
+		if cmd.Context != expectedContext {
+			s.offlineMu.Unlock()
+			fail(w, 409, "Saved work belongs to a different live/training context or an older app; retain it for review and update the Windows MDT.")
+			return
+		}
 		defer s.offlineMu.Unlock()
 		hash := fmt.Sprintf("%x", sha256.Sum256([]byte(cmd.Method+"|"+cmd.Path+"|"+cmd.Unit+"|"+cmd.Incident+"|"+cmd.BaseStatusAt+"|"+cmd.At.UTC().Format(time.RFC3339Nano)+"|"+string(cmd.Body)+"|"+cmd.Binary+"|"+cmd.FileName+"|"+cmd.Caption)))
 		if prior, found := s.Eng.OfflineCommandResult(a.User, cmd.ID); found {
@@ -94,6 +110,7 @@ func (s *Server) desktopRoutes() {
 			return
 		}
 		a.ClientCommand, a.ClientHash, a.ClientAt = cmd.ID, hash, cmd.At
+		meta := offlineCommandMeta{ID: cmd.ID, Hash: hash, At: cmd.At}
 		var own *cad.Unit
 		var oldIncidentAllowed bool
 		s.Eng.Read(func(st *cad.State) {
@@ -160,6 +177,7 @@ func (s *Server) desktopRoutes() {
 				}
 			}
 			captured, err := time.Parse(time.RFC3339Nano, base)
+			meta.Unit, meta.Incident, meta.StatusAt = unit, cmd.Incident, captured
 			if err != nil || !captured.Equal(own.StatusAt) || cmd.Incident != own.Incident {
 				fail(w, 409, "dispatch changed this unit or call while offline; review the saved action before retrying")
 				return
@@ -210,6 +228,7 @@ func (s *Server) desktopRoutes() {
 				return
 			}
 			if rp.Number != "" {
+				meta.Report, meta.ReportUpdated = rp.Number, rp.Updated
 				changed := false
 				s.Eng.Read(func(st *cad.State) {
 					if current := st.Reports[rp.Number]; current == nil || !current.Updated.Equal(rp.Updated) {
@@ -243,7 +262,7 @@ func (s *Server) desktopRoutes() {
 		request.Header.Set("X-BitDispatcher", "1")
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Set("Cookie", r.Header.Get("Cookie"))
-		request = request.WithContext(context.WithValue(r.Context(), offlineCommandKey{}, offlineCommandMeta{cmd.ID, hash, cmd.At}))
+		request = request.WithContext(context.WithValue(r.Context(), offlineCommandKey{}, meta))
 		response := httptest.NewRecorder()
 		s.mux.ServeHTTP(response, request)
 		if response.Code >= 200 && response.Code < 300 {

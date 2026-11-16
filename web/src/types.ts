@@ -253,6 +253,7 @@ export type History = { number: string; type?: string; address?: string; lat: nu
 
 export type Duty = 'calltaker' | 'police' | 'fire' | 'ems' | 'dispatcher' | 'supervisor' | 'admin' | 'records' | 'field' | 'viewer'
 export type Session = {
+	 hash?: string
   username: string; name: string; role: 'viewer' | 'field' | 'dispatcher' | 'supervisor' | 'admin'; console: string; from: string; created: string; last: string
   mdtUnit?: string; training?: boolean; exercise?: string; duty: Duty; locked?: boolean; lockedAt?: string; active?: string; workstation?: string
 }
