@@ -26,6 +26,7 @@ type mdtLookupQuery struct {
 	Purpose string `json:"purpose"`
 }
 type mdtLookupHit struct {
+	Source      string    `json:"source,omitempty"`
 	Record      string    `json:"record"`
 	Incident    string    `json:"incident"`
 	Seen        time.Time `json:"seen"`
@@ -182,6 +183,22 @@ func (s *Server) mdtLookupRoutes() {
 						}
 						hits = append(hits, mdtLookupHit{Record: v.ID, Incident: in.Number, Seen: in.Created, Plate: v.Plate, State: v.State, VIN: v.VIN, Year: v.Year, Make: v.Make, Model: v.Model, Color: v.Color, Body: v.Body})
 					}
+				}
+			}
+			for _, r := range st.LASRecords {
+				if r.Archived || r.Restricted || r.Kind != q.Kind || (r.Agency != "" && !strings.EqualFold(r.Agency, own.Agency)) {
+					continue
+				}
+				if q.Kind == "person" {
+					if lookupMinor(r.DOB, "", now) || !lookupNameMatches(name, cad.Person{Name: r.Name, Aliases: r.Aliases}) || (q.DOB != "" && q.DOB != r.DOB) {
+						continue
+					}
+					hits = append(hits, mdtLookupHit{Source: "LAS directory", Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety})
+				} else {
+					if plate != "" && !strings.Contains(lookupID(r.Plate), plate) || vin != "" && !strings.Contains(lookupID(r.VIN), vin) || q.State != "" && !strings.EqualFold(q.State, r.State) {
+						continue
+					}
+					hits = append(hits, mdtLookupHit{Source: "LAS directory", Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
 				}
 			}
 		})

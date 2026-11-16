@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import * as maplibregl from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { toast } from 'sonner'
-import { FileText, Image as ImageIcon, LocateFixed, LogOut, MapPin, Navigation, Phone, Send, Siren, HardHat, Search } from 'lucide-react'
+import { FileText, Image as ImageIcon, LocateFixed, LogOut, MapPin, Navigation, Phone, Send, HardHat, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, errText } from '../api'
 import { signOut, useStore } from '../store'
@@ -16,6 +16,7 @@ import MdtBulletins from './Bulletins'
 import MdtRoads from './Roads'
 import RecordSearch from './RecordSearch'
 import MdtVoice from './Voice'
+import EmergencyButton from './EmergencyButton'
 import WeatherAlerts from '../WeatherAlerts'
 import type { WeatherFeature } from '../WeatherAlerts'
 import type { CommView } from '../types'
@@ -60,7 +61,7 @@ export default function Mdt() {
   const nav = useNavigate()
   const [crewOpen, setCrewOpen] = useState(false)
   const [lookupOpen, setLookupOpen] = useState(false)
-  const [sendGps, setSendGps] = useState(false)
+  const [sendGps, setSendGps] = useState(true)
   const unitParam = ''
   const unitPicker = <span className="text-sm">Assigned MDT unit: {me?.mdtUnit || 'Unassigned'}</span>
   const load = () => api.get<MDTView>('/mdt' + unitParam).then((v) => { setM(v); setErr('') }).catch((e) => setErr(errText(e)))
@@ -158,13 +159,13 @@ export default function Mdt() {
   const next = NEXT[u!.status]
   const notes = (inc?.timeline ?? []).filter((e) => e.kind === 'note' || e.kind === 'priority-note' || e.kind === 'created').slice().reverse()
   return (
-    <div className="flex h-full flex-col bg-slate-950 text-slate-100">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-950 text-slate-100">
       {me?.training && (
         <div role="status" className="bg-violet-600 px-3 py-1 text-center text-sm font-bold tracking-wide text-white">
           TRAINING{me.exercise ? ` · exercise ${me.exercise}` : ''} · nothing here reaches the live board
         </div>
       )}
-      <header className="flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 py-2">
+      <header className="flex max-h-[35dvh] shrink-0 flex-wrap items-center gap-3 overflow-y-auto border-b border-slate-800 bg-slate-900 px-3 py-2">
         <Logo size={22} />
         <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} connected={!err && stream === 'live'} />
         {unitPicker}
@@ -194,7 +195,7 @@ export default function Mdt() {
         <div role="alert" className="animate-pulse bg-rose-700 px-3 py-2 text-center text-lg font-black tracking-wide">EMERGENCY SENT {clock(m.emergency.raised, now)} · waiting for dispatch to acknowledge</div>
       )}
       {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} />}
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(24rem,36rem)_1fr]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(24rem,36rem)_1fr]">
         <section className="flex min-h-0 flex-col gap-2 overflow-y-auto p-3">
           {inc ? (
             <>
@@ -317,50 +318,17 @@ export default function Mdt() {
             onClick={() => setMoOpen(!moOpen)} disabled={!m.settings.markOuts?.length} aria-expanded={moOpen}>
             Mark out…<span className="font-mono text-[10px] font-normal text-slate-300/70">F7</span>
           </button>
-          <EmergencyButton unitParam={unitParam} onSent={load} />
         </section>
         <MdtMap m={m} route={route} here={here} onWeather={setWeatherAlerts} />
       </div>
+      <footer className="relative z-20 shrink-0 border-t border-rose-900 bg-slate-950 px-3 pt-2" style={{paddingBottom:'max(0.5rem, env(safe-area-inset-bottom))'}} aria-label="Emergency controls">
+        <EmergencyButton unitParam={unitParam} onSent={load} />
+      </footer>
       {crewOpen && (
         <CrewDialog view={{ units: [m.unit], roadmap: { members: m.roster ?? [] } } as unknown as View} unitId={m.unit.id} onClose={() => { setCrewOpen(false); load() }}
           save={async (crew) => { await api.put('/mdt/crew' + unitParam, { crew }) }} />
       )}
     </div>
-  )
-}
-
-/** Hold for two seconds: an emergency must never be sent by brushing the screen. */
-function EmergencyButton({ unitParam, onSent }: { unitParam: string; onSent: () => void }) {
-  const [held, setHeld] = useState(0)
-  const timer = useRef<number>(0)
-  const start = () => {
-    const t0 = Date.now()
-    timer.current = window.setInterval(async () => {
-      const f = Math.min(1, (Date.now() - t0) / 2000)
-      setHeld(f)
-      if (f >= 1) {
-        clearInterval(timer.current)
-        setHeld(0)
-        try {
-          await api.post('/mdt/emergency' + unitParam)
-          toast.error('EMERGENCY sent to dispatch')
-          onSent()
-        } catch (e) {
-          toast.error(errText(e))
-        }
-      }
-    }, 50)
-  }
-  const stop = () => {
-    clearInterval(timer.current)
-    setHeld(0)
-  }
-  return (
-    <button className="relative h-12 overflow-hidden rounded-lg border border-rose-700 bg-rose-950 text-base font-black tracking-wider text-rose-200"
-      onPointerDown={start} onPointerUp={stop} onPointerLeave={stop} aria-label="Emergency: hold for two seconds">
-      <span className="absolute inset-y-0 left-0 bg-rose-600" style={{ width: `${held * 100}%` }} />
-      <span className="relative flex items-center justify-center gap-2"><Siren size={18} aria-hidden /> HOLD FOR EMERGENCY</span>
-    </button>
   )
 }
 

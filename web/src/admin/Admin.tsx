@@ -1,4 +1,5 @@
 import LasAgency from './LasAgency'
+import LasRecords from './LasRecords'
 import LasPublicCalls from './LasPublicCalls'
 import LasIntegrations from './LasIntegrations'
 import { UNAVAILABLE_ADMIN } from '../brand'
@@ -72,6 +73,7 @@ const TONE: Record<Tone, { tile: string; text: string }> = {
 const GROUPS: Group[] = [
   { id: 'start', label: 'Getting started', icon: Rocket, tone: 'emerald', pages: [
     { to: 'las', label: 'Lakes Area Security', icon: Building2, admin: true },
+    { to: 'las-records', label: 'Persons & vehicles', icon: Database, admin: true },
     { to: 'las-public-calls', label: 'Public calls feed', icon: Megaphone, admin: true },
     { to: 'setup', label: 'Setup checklist', icon: ListTodo, admin: true },
     { to: 'golive', label: 'Go-live check', icon: Rocket, admin: true },
@@ -153,6 +155,7 @@ export default function Admin() {
             <Route index element={<Navigate to={'/admin/' + pages[0].to} replace />} />
             <Route path="las" element={<LasAgency />} />
             <Route path="las-public-calls" element={<LasPublicCalls />} />
+            <Route path="las-records" element={<LasRecords />} />
             <Route path="setup" element={<Setup />} />
             <Route path="golive" element={<GoLive />} />
             <Route path="support" element={<Support view={view} />} />

@@ -141,6 +141,7 @@ type actionData struct {
 
 // State is everything bitdispatcher knows, rebuilt from the ledger.
 type State struct {
+	LASRecords     map[string]LASRecord     `json:"lasRecords,omitempty"`
 	LASPublicCalls map[string]LASPublicCall `json:"lasPublicCalls,omitempty"`
 	Seq            uint64                   `json:"seq"`
 	Settings       Settings                 `json:"settings"`
@@ -328,6 +329,8 @@ func (s *State) apply(e ledger.Event) error {
 
 func (s *State) applyCore(e ledger.Event) error {
 	switch e.Type {
+	case EvLASRecords:
+		return s.applyLASRecords(e)
 	case EvLASPublicCall:
 		v, err := decode[LASPublicCall](e)
 		if err != nil {

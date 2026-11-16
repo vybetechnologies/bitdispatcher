@@ -49,6 +49,8 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
   const [volume,setVolume]=useState(1)
   const [settings,setSettings]=useState(false)
   const [error,setError]=useState('')
+  const [waitingForTap,setWaitingForTap]=useState(false)
+  const attemptedDefault=useRef(false)
   const seen=useRef(new Map<string,string>())
   const pending=useRef<Announcement[]>([])
   const speaking=useRef(false)
@@ -62,7 +64,7 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
   const locals=useRef(voices);locals.current=voices
   const active=useRef(enabled);active.current=enabled
   const stop=()=>{generation.current++;pending.current=[];speaking.current=false;currentSpoken.current=null;if(supported)speechSynthesis.cancel()}
-  const off=()=>{enableToken.current++;active.current=false;setEnabled(false);stop();release.current?.();release.current=null}
+  const off=()=>{enableToken.current++;active.current=false;setEnabled(false);setWaitingForTap(false);stop();release.current?.();release.current=null}
   useEffect(()=>{
     if(!supported)return
     const load=()=>setVoices(speechSynthesis.getVoices().filter(v=>v.localService && /^en(?:-|$)/i.test(v.lang)))
@@ -79,7 +81,7 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
     u.voice=selected;u.lang=selected.lang;u.rate=prefs.current.rate;u.volume=prefs.current.volume
     speaking.current=true;currentSpoken.current=a;last.current=a.text
     u.onend=()=>{if(token!==generation.current)return;speaking.current=false;currentSpoken.current=null;pump()}
-    u.onerror=()=>{if(token!==generation.current)return;off();setError('Voice stopped. Check device audio, then enable voice again.')}
+    u.onerror=(e)=>{if(token!==generation.current)return;off();if(e.error==='not-allowed')setWaitingForTap(true);setError(e.error==='not-allowed'?'Browser requires a tap. Select Enable audio to start speaking.':'Voice stopped. Check device audio, then enable voice again.')}
     speechSynthesis.speak(u)
   }
   const enqueue=(items:Announcement[])=>{
@@ -96,6 +98,7 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
   }
   const enable=async()=>{
     setError('')
+    setWaitingForTap(false)
     if(!supported||!voices.length){setError('A local English device voice is required.');return}
     const token=++enableToken.current
     const start=()=>{seen.current.clear();active.current=true;setEnabled(true);enqueue([{id:'ready',text:'LAS terminal voice enabled.',priority:0}])}
@@ -108,6 +111,13 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
       }).catch(()=>setError('Unable to enable voice in this browser.'))
     } else start()
   }
+  useEffect(()=>{
+    if(!supported || !voices.length || attemptedDefault.current)return
+    attemptedDefault.current=true
+    void enable()
+    // Browsers may require interaction; the explicit Voice button remains available.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[supported,voices])
   useEffect(()=>{
     if(!enabled||!m)return
     if(!connected){stop();return}
@@ -134,11 +144,11 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
   useEffect(()=>{
     const cancel=()=>off()
     window.addEventListener('bd:locked',cancel);window.addEventListener('bd:signedout',cancel)
-    return()=>{window.removeEventListener('bd:locked',cancel);window.removeEventListener('bd:signedout',cancel);off()}
+    return()=>{window.removeEventListener('bd:locked',cancel);window.removeEventListener('bd:signedout',cancel);attemptedDefault.current=false;off()}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
   return <div className="flex flex-wrap items-center gap-2">
-    <button className={`btn h-11 ${enabled?'border-amber-400 text-amber-200':''}`} aria-pressed={enabled} disabled={!supported} onClick={()=>enabled?off():void enable()}>{enabled?<Volume2 size={17}/>:<VolumeX size={17}/>} Voice {enabled?'on':'off'}</button>
+    <button className={`btn h-11 ${enabled||waitingForTap?'border-amber-400 text-amber-200':''}`} aria-pressed={enabled||waitingForTap} disabled={!supported} onClick={()=>enabled?off():void enable()}>{enabled||waitingForTap?<Volume2 size={17}/>:<VolumeX size={17}/>} {waitingForTap?'Voice on · Enable audio':`Voice ${enabled?'on':'off'}`}</button>
     {enabled&&<><button className="btn h-11" aria-label="Repeat last voice announcement" onClick={()=>{stop();enqueue([{id:'repeat',text:last.current||'No previous announcement.',priority:1}])}}><RotateCcw size={16}/> Repeat</button><button className="btn h-11" onClick={stop}>Stop speaking</button></>}
     <button className="btn h-9" aria-expanded={settings} onClick={()=>setSettings(v=>!v)}>Voice settings</button>
     {(!supported||error)&&<span role="status" className="text-xs text-amber-200">{error||'Speech is unavailable in this browser.'}</span>}
@@ -147,7 +157,7 @@ export default function MdtVoice({ m, messages, weather = [], connected }: {m:MD
       <label>Device voice <select className="input" value={voice} onChange={e=>setVoice(e.target.value)}><option value="">Default local English voice</option>{voices.map(v=><option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>)}</select></label>
       <label>Speed <input aria-label="Voice speed" type="range" min="0.75" max="1.4" step="0.05" value={rate} onChange={e=>setRate(Number(e.target.value))}/>{rate.toFixed(2)}×</label>
       <label>Volume <input aria-label="Voice volume" type="range" min="0.1" max="1" step="0.1" value={volume} onChange={e=>setVolume(Number(e.target.value))}/></label>
-      <p className="w-full text-xs text-slate-400">Enable each session before driving. Uses installed local voices; no microphone. Speech does not acknowledge messages. Browser/device audio must remain available.</p>
+      <p className="w-full text-xs text-slate-400">Voice starts automatically. If the browser blocks audio, tap Voice on. Uses installed local voices; no microphone. Speech does not acknowledge messages.</p>
     </div>}
   </div>
 }

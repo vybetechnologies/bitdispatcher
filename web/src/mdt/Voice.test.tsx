@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import MdtVoice, { changedAnnouncements, voiceSnapshot } from './Voice'
 import type { MDTView } from './Mdt'
 import type { CommView } from '../types'
@@ -20,7 +20,7 @@ it('speaks a changed unit status once after receiving the confirmed terminal sta
  const audio=speechMock()
  const base={...m,cautions:[],bolos:[],incident:undefined}
  const panel=render(<MdtVoice m={base} messages={[]} connected/> )
- fireEvent.click(screen.getByText('Voice off'))
+
  await waitFor(()=>expect(screen.getByText('Voice on')).toBeTruthy())
  audio.drain();audio.speak.mockClear()
  const changed={...base,unit:{...base.unit,status:'enroute'}}
@@ -41,7 +41,7 @@ it('announces new and changed weather instructions once and does not replay on r
  const audio=speechMock()
  const base={...m,cautions:[],bolos:[],incident:undefined}
  const panel=render(<MdtVoice m={base} messages={[]} connected/> )
- fireEvent.click(screen.getByText('Voice off'))
+
  await waitFor(()=>expect(screen.getByText('Voice on')).toBeTruthy())
  audio.drain();audio.speak.mockClear()
  panel.rerender(<MdtVoice m={base} messages={[]} weather={[weather]} connected/> )
@@ -61,15 +61,26 @@ it('prioritizes safety and deduplicates polling while announcing changed status'
  const next=voiceSnapshot({...m,unit:{...m.unit,status:'enroute'}},[])
  expect(changedAnnouncements(seen,next).map(n=>n.id)).toEqual(['status'])
 })
-it('uses only local voices, requires enabling, and cancels on mute and lock',async()=>{
+it('keeps the default-on intent visible when the browser requires a gesture',async()=>{
+ const audio=speechMock()
+ render(<MdtVoice m={m} messages={[]} connected/> )
+ await waitFor(()=>expect(audio.speak).toHaveBeenCalled())
+ const utterance=audio.speak.mock.calls[0][0] as unknown as {onerror:(e:{error:string})=>void}
+ act(()=>utterance.onerror({error:'not-allowed'}))
+ const button=screen.getByText('Voice on · Enable audio')
+ expect(button.getAttribute('aria-pressed')).toBe('true')
+ fireEvent.click(button)
+ await waitFor(()=>expect(screen.getByText('Voice on')).toBeTruthy())
+})
+it('starts automatically with local voices and cancels on lock',async()=>{
  const speak=vi.fn();const cancel=vi.fn()
  vi.stubGlobal('speechSynthesis',{getVoices:()=>[{name:'Local',voiceURI:'local',lang:'en-US',localService:true},{name:'Cloud',voiceURI:'cloud',lang:'en-US',localService:false}],speak,cancel,addEventListener:vi.fn(),removeEventListener:vi.fn()})
  vi.stubGlobal('SpeechSynthesisUtterance',class {constructor(public text:string){}})
  render(<MdtVoice m={m} messages={[]} connected/> )
- expect(speak).not.toHaveBeenCalled()
+
  fireEvent.click(screen.getByText('Voice settings'))
  expect(screen.queryByText('Cloud')).toBeNull()
- fireEvent.click(screen.getByText('Voice off'))
+
  await waitFor(()=>expect(speak).toHaveBeenCalled())
  expect(speak.mock.calls[0][0].voice.voiceURI).toBe('local')
  window.dispatchEvent(new Event('bd:locked'))

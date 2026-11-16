@@ -1,10 +1,12 @@
 # MDT voice and NWS map warnings
 
 The MDT header has Voice on/off, Repeat, Stop speaking and Voice settings.
-Enable once per signed-in page before driving. Speech uses only installed local
+Voice starts automatically on each signed-in MDT page. Speech uses only installed local
 English Web Speech voices (never a remote speech service), with adjustable speed
 and volume. No microphone, automatic status changes or message acknowledgement.
-Enablement is deliberately not remembered across sign-in, duty changes or reload.
+Mute applies to the current MDT page. A new MDT page starts voice again. Browsers
+that block automatic audio show Voice on / Enable audio until the officer taps
+that control; the application does not bypass browser audio restrictions.
 The browser's audio output must be connected and the terminal must remain running;
 sleep, browser suspension and device audio restrictions can interrupt speech.
 
