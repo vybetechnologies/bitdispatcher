@@ -18,7 +18,7 @@ const live = (c: CommView) => c.state !== 'cancelled' && c.state !== 'expired'
 /** MdtBulletins: the messages, BOLOs and officer-safety notices addressed to this crew, with the agency's
  * priority tones, repeats and acknowledgement, as on the dispatch console. The crew's acknowledgement is
  * recorded against the terminal's sign-on (the unit), and opening one records that it was read. */
-export default function MdtBulletins() {
+export default function MdtBulletins({ onItems }: { onItems?: (items: CommView[]) => void }) {
   const [list, setList] = useState<CommList | null>(null)
   const [open, setOpen] = useState<string>()
   const [detail, setDetail] = useState<{ versions: CommView[]; files: CommFile[] } | null>(null)
@@ -28,7 +28,7 @@ export default function MdtBulletins() {
   const seen = useRef<Set<string>>(new Set())
   const timers = useRef<Record<string, number>>({})
 
-  const load = () => api.get<CommList>('/comms?folder=inbox').then((l) => { setList(l); setErr('') }).catch((e) => setErr(errText(e)))
+  const load = () => api.get<CommList>('/comms?folder=inbox').then((l) => { setList(l); onItems?.(l.items); setErr('') }).catch((e) => { onItems?.([]); setErr(errText(e)) })
   useEffect(() => {
     load()
     const t = window.setInterval(load, 8000)

@@ -13,6 +13,7 @@ import type { Recommendation, RoadClosure, RouteView, SearchResult, View } from 
 import { closureFeatures, ClosureCard, CloseRoad, drawnFeatures, trafficFeatures, useRoads } from './Roads'
 import { dispatchStyle, type Theme } from './mapStyle'
 import { alertAreas } from './PublicAlerts'
+import WeatherAlerts from '../WeatherAlerts'
 
 maplibregl.setWorkerUrl(workerUrl)
 
@@ -512,6 +513,7 @@ export default function MapView({ view, rec, onCreateAt }: { view: View; rec: Re
   const noAvl = view.units.filter((u) => u.status !== 'oos' && avl(view, u, now) === 'none').length
   return (
     <section className="panel relative min-h-0 overflow-hidden" aria-label="Map">
+      <WeatherAlerts map={map} ready={ready} />
       <div className="absolute inset-0">
         {/* MapLibre sets position: relative on its container, so the container fills a positioned wrapper. */}
         <div ref={box} className="h-full w-full" />

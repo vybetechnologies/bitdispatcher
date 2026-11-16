@@ -15,6 +15,9 @@ import MdtMessages from './Messages'
 import MdtBulletins from './Bulletins'
 import MdtRoads from './Roads'
 import RecordSearch from './RecordSearch'
+import MdtVoice from './Voice'
+import WeatherAlerts from '../WeatherAlerts'
+import type { CommView } from '../types'
 import { clock, cx, mi, prio, statusMeta, useNow } from '../util'
 import { CrewDialog } from '../console/Roadmap'
 import type { MemberBrief, PaperFlag, BOLO, MarkOutType, Incident, Position, Premise, RouteView, Station, Unit, UnitMessage, View } from '../types'
@@ -23,7 +26,7 @@ import { IncidentFlags, PlaceLine } from '../console/IncidentExtras'
 
 maplibregl.setWorkerUrl(workerUrl)
 
-type MDTView = {
+export type MDTView = {
   serverTime: string; unit: Unit; station?: Station; incident?: Incident; typeName?: string; summary?: string; partners: Unit[]; premises?: Premise[]
   emergency?: { key: string; raised: string; ackedBy?: string }; pending: Incident[]; statuses: string[]; bolos?: BOLO[]
   settings: { agency: string; mapCenter: [number, number]; mapZoom: number; avlStaleSeconds: number; markOuts?: MarkOutType[] }
@@ -44,6 +47,8 @@ const base = () => location.origin + location.pathname.replace(/[^/]*$/, '')
 export default function Mdt() {
   const me = useStore((s) => s.me)
   const view = useStore((s) => s.view)
+  const stream = useStore((s) => s.stream)
+  const [voiceMessages, setVoiceMessages] = useState<CommView[]>([])
   const [m, setM] = useState<MDTView | null>(null)
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
@@ -159,6 +164,7 @@ export default function Mdt() {
       )}
       <header className="flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 py-2">
         <Logo size={22} />
+        <MdtVoice m={m} messages={voiceMessages} connected={!err && stream === 'live'} />
         {unitPicker}
         <span className="font-mono text-2xl font-black tracking-tight">{u!.id}</span>
         <StatusChip status={u!.status} />
@@ -272,7 +278,7 @@ export default function Mdt() {
               )}
             </div>
           )}
-          {me?.role === 'field' && <MdtBulletins />}
+          {me?.role === 'field' && <MdtBulletins onItems={setVoiceMessages} />}
           <MdtRoads />
           <MdtMessages unit={u!.id} messages={m.messages ?? []} unitParam={unitParam} />
           {moOpen && (
@@ -418,6 +424,7 @@ function MdtMap({ m, route, here }: { m: MDTView; route: RouteView | null; here?
     <div className="relative min-h-72">
       {/* MapLibre makes its container position: relative, so it sits inside an absolute box. */}
       <div className="absolute inset-0"><div ref={box} className="h-full w-full" /></div>
+      <WeatherAlerts map={map} ready={ready} />
       {m.health.photos?.available && (
         <button className={cx('btn absolute left-2 top-2 h-9', ph && 'ring-1 ring-amber-400 text-amber-200')} onClick={() => setPhotos((v) => { localStorage.setItem('bd.mdtPhotos', v ? '0' : '1'); return !v })}>
           <ImageIcon size={14} aria-hidden /> Photos

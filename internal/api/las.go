@@ -22,6 +22,7 @@ func (s *Server) lasRoutes() {
 	s.lasPublicRoutes()
 	s.mdtLookupRoutes()
 	s.moduleRoutes()
+	s.weatherRoutes()
 	s.handle("PUT /api/admin/users/{name}/mdt-unit", auth.Admin, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
 		var b struct {
 			Unit string `json:"unit"`

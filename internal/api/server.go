@@ -57,6 +57,7 @@ type Integrations struct {
 
 // Server is the API.
 type Server struct {
+	weather        weatherCache
 	LAS            bool       // private-security runtime; never inferred from a mutable agency name
 	enrol          enrolCodes // one-time workstation enrolment codes
 	texts          *fileTextIndex
