@@ -17,6 +17,36 @@ import (
 var rptNumber = regexp.MustCompile(`^R([A-Z]*)(\d{2})-(\d{6})$`)
 
 // Report statuses.
+const EvReportDeleted = "rms.report.deleted"
+
+func (e *Engine) DeleteDraftReport(a Actor, number string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	r := e.st.Reports[number]
+	if r == nil {
+		return nil // DELETE is idempotent after a lost acknowledgement.
+	}
+	if r.Status != RptDraft {
+		return problem("status", "only draft reports can be deleted")
+	}
+	if r.Author != a.User && a.Role != "admin" {
+		return problem("author", "you can delete only your own draft reports")
+	}
+	_, err := e.write(a, EvReportDeleted, refs{Incident: r.Incident}, rptStatus{Number: number})
+	return err
+}
+
+func (s *State) applyReportDeleted(number string) {
+	r := s.Reports[number]
+	if r == nil {
+		return
+	}
+	if in := s.Incidents[r.Incident]; in != nil {
+		in.Reports = slices.DeleteFunc(in.Reports, func(n string) bool { return n == number })
+	}
+	delete(s.Reports, number)
+}
+
 const (
 	RptDraft     = "draft"
 	RptSubmitted = "submitted" // to a supervisor

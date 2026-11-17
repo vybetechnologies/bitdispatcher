@@ -3,6 +3,8 @@ import { Car, Search, ShieldAlert, UserRound } from 'lucide-react'
 import { api, errText } from '../api'
 import { Modal } from '../ui'
 import { cx } from '../util'
+import FbiWanted from './FbiWanted'
+import type {FbiQuery} from './FbiWanted'
 import type { Person } from '../requests/types'
 
 type Hit = { flags?:{id:string;title:string;warning:string;instruction:string}[];person?:Person;incidents?:{incident:string;role:string}[];source?:string; record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
@@ -23,7 +25,8 @@ export function personCautionAnnouncement(result:Results):string {
 }
 
 /** Private local-record lookup, kept inside MDT so it never changes the user's duty or assigned unit. */
-export default function RecordSearch({onClose,onCaution}:{onClose:()=>void;onCaution?:(text:string)=>void}) {
+export default function RecordSearch({onClose,onCaution,onFbiCaution}:{onClose:()=>void;onCaution?:(text:string)=>void;onFbiCaution?:(text:string)=>void}) {
+ const [fbiQuery,setFbiQuery]=useState<FbiQuery|null>(null)
  const [kind,setKind]=useState<'person'|'vehicle'>('person')
  const [name,setName]=useState('')
  const [dob,setDob]=useState('')
@@ -36,9 +39,10 @@ export default function RecordSearch({onClose,onCaution}:{onClose:()=>void;onCau
  const [result,setResult]=useState<Results|null>(null)
  const request=useRef(0)
  useEffect(()=>()=>{request.current++},[])
- const changeKind=(next:'person'|'vehicle')=>{request.current++;setKind(next);setError('');setResult(null)}
+ const changeKind=(next:'person'|'vehicle')=>{request.current++;setKind(next);setError('');setResult(null);setFbiQuery(null);onFbiCaution?.('')}
  const search=async(e:React.FormEvent)=>{
   e.preventDefault();if(busy)return;const id=++request.current;setBusy(true);setError('');setResult(null)
+  onFbiCaution?.('');setFbiQuery(kind==='person'?{id,name,dob,purpose}:null)
   try{const response=await api.post<Results>('/mdt/records/search',{kind,purpose,...(kind==='person'?{name,dob}:{plate,state,vin})});if(request.current===id){setResult(response);onCaution?.(personCautionAnnouncement(response))}}
   catch(e){if(request.current===id)setError(errText(e))}
   finally{if(request.current===id)setBusy(false)}
@@ -72,6 +76,7 @@ export default function RecordSearch({onClose,onCaution}:{onClose:()=>void;onCau
     </form>
    </div>
    {busy&&<p role="status" className="text-sm text-slate-300">Searching LAS records, then EnformionGO if needed…</p>}
+   {fbiQuery&&<FbiWanted query={fbiQuery} onCaution={text=>{if(request.current===fbiQuery.id)onFbiCaution?.(text)}}/>}
    {error&&<p role="alert" className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">{error}</p>}
    {result&&<section aria-label="Search results" className="space-y-3">
     {result.providerMessage&&<p role="status" className="rounded border border-amber-800/50 bg-amber-950/10 p-3 text-sm text-amber-200">{result.providerMessage}</p>}

@@ -14,6 +14,38 @@ function storageFixture(){
  return files
 }
 describe('Windows MDT durable offline work',()=>{
+ it('maps an offline-created incident to its server number for notes and closure',async()=>{
+  storageFixture();vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')))
+  const desktop=await import('./desktop')
+  const created=await(await desktop.desktopRequest('POST','/mdt/incidents',{type:'PATROL',location:{address:'Synthetic location'},narrative:'Synthetic call'})).json()
+  expect(created.number).toMatch(/^OFFLINE-/)
+  expect((await(await desktop.desktopRequest('GET','/mdt')).json()).incident.number).toBe(created.number)
+  await desktop.desktopRequest('POST','/mdt/note',{text:'Synthetic note'})
+  await desktop.desktopRequest('POST','/mdt/close',{incident:created.number,disposition:'Resolved',text:'Synthetic close'})
+  const sent:Record<string,unknown>[]=[]
+  vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{
+   if(url.endsWith('/auth/me'))return new Response(JSON.stringify({signedIn:true,session:{username:'alex',mdtUnit:'U1'}}))
+   if(url.endsWith('/offline/sync')){const payload=JSON.parse(String(options?.body));sent.push(payload);return payload.Path==='/mdt/incidents'?new Response(JSON.stringify({number:'PERMANENT-CALL'})):new Response(null,{status:204})}
+   return new Response(JSON.stringify({unit:{id:'U1',status:'available',statusAt:'2026-11-17T12:00:00Z'},pending:[],messages:[],settings:{},health:{}}))
+  }))
+  await desktop.syncDesktop();expect(await desktop.desktopOutbox()).toHaveLength(0)
+  expect(sent[1].Incident).toBe('PERMANENT-CALL');expect(sent[2].Incident).toBe('PERMANENT-CALL')
+  expect((sent[2].Body as {incident:string}).incident).toBe('PERMANENT-CALL')
+ })
+ it('queues deletion of an offline report and resolves its assigned server number',async()=>{
+  storageFixture();vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')))
+  const desktop=await import('./desktop')
+  const draft=await(await desktop.desktopRequest('POST','/rms/reports',{narrative:'Synthetic draft'})).json()
+  await desktop.desktopRequest('DELETE','/rms/reports/'+draft.report.number)
+  const sent:{Path:string;Method:string}[]=[]
+  vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{
+   if(url.endsWith('/auth/me'))return new Response(JSON.stringify({signedIn:true,session:{username:'alex',mdtUnit:'U1'}}))
+   const command=JSON.parse(String(options?.body));sent.push(command)
+   return command.Method==='DELETE'?new Response(null,{status:204}):new Response(JSON.stringify({report:{number:'R-PERM',updated:'2026-11-17T12:00:00Z'}}))
+  }))
+  await desktop.syncDesktop();expect(await desktop.desktopOutbox()).toHaveLength(0)
+  expect(sent[1]).toMatchObject({Method:'DELETE',Path:'/rms/reports/R-PERM'})
+ })
  it('retains a rejected legacy entry while syncing unrelated new work',async()=>{
   const files=storageFixture();vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')))
   const desktop=await import('./desktop')

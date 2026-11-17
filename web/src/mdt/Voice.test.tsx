@@ -11,6 +11,11 @@ it('announces employee affiliation independently of existing safety cautions',()
  expect(next.find(n=>n.id==='caution:dog')?.text).toContain('Safety warning')
 })
 afterEach(()=>{cleanup();vi.unstubAllGlobals()})
+it('keeps FBI and local cautions as independent voice announcements',()=>{
+ const notices=voiceSnapshot(m,[],[],{id:1,text:'Officer safety warning. Existing local caution.'},{id:2,text:'Possible FBI Wanted notice match. Verify with dispatch.'})
+ expect(notices.find(n=>n.id==='lookup-caution:1')?.text).toContain('Existing local caution')
+ expect(notices.find(n=>n.id==='fbi-caution:2')?.text).toContain('Possible FBI Wanted')
+})
 const weather:WeatherFeature={type:'Feature',id:'wx1',geometry:null,properties:{id:'wx1',event:'Blizzard Warning',areaDesc:'Cass and Clay',headline:'Whiteout conditions',instruction:'Avoid travel',description:'Snow and wind',severity:'Severe',urgency:'Immediate',certainty:'Observed',sent:new Date().toISOString(),effective:new Date().toISOString(),expires:new Date(Date.now()+3600000).toISOString()}}
 function speechMock(){
  const utterances: {text:string;onend?:()=>void}[]=[]

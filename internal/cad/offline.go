@@ -18,7 +18,11 @@ func (s *State) rememberOfflineCommand(ev ledger.Event) {
 	if s.clientCommands == nil {
 		s.clientCommands = map[string]OfflineCommandResult{}
 	}
-	if _, exists := s.clientCommands[ev.Actor+"|"+ev.ClientCommand]; exists {
+	if prior, exists := s.clientCommands[ev.Actor+"|"+ev.ClientCommand]; exists {
+		if prior.Type == EvIncCreated && ev.Type == EvUnitStatus {
+			prior.At = ev.At
+			s.clientCommands[ev.Actor+"|"+ev.ClientCommand] = prior
+		}
 		return
 	}
 	var ids struct {

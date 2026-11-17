@@ -21,6 +21,16 @@ func (s *Server) rmsRoutes() {
 	s.handle("GET /api/rms/reports", auth.Viewer, s.rmsList)
 	s.handle("GET /api/rms/reports/{n}", auth.Viewer, s.rmsGet)
 	s.handle("POST /api/rms/reports", auth.Viewer, s.rmsSave)
+	s.handle("DELETE /api/rms/reports/{n}", auth.Viewer, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
+		if !writer(w, se) {
+			return
+		}
+		if err := s.Eng.DeleteDraftReport(a, r.PathValue("n")); err != nil {
+			writeErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	s.handle("POST /api/rms/reports/{n}/status", auth.Viewer, s.rmsStatus)
 	s.handle("POST /api/ncic/query", auth.Viewer, s.ncicQuery)
 	s.handle("GET /api/rms/ibr", auth.Supervisor, s.ibrPreview)

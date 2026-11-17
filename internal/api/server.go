@@ -57,6 +57,9 @@ type Integrations struct {
 
 // Server is the API.
 type Server struct {
+	fbiMu          sync.Mutex
+	fbiHTTP        *http.Client
+	fbiCache       map[string]fbiSearchResult
 	offlineMu      sync.Mutex
 	enformionMu    sync.Mutex   // serialize local-miss provider requests and ingestion
 	enformionHTTP  *http.Client // test override; production uses a bounded, no-redirect client

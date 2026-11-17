@@ -8,6 +8,49 @@ import (
 	"time"
 )
 
+func TestDesktopOfflineOfficerIncidentAndCloseReceipts(t *testing.T) {
+	ts, s, pw := newServer(t)
+	s.LAS = true
+	s.desktopRoutes()
+	if err := s.Eng.SaveUnit(cad.SystemActor, cad.UnitDef{ID: "OFFLINE1", Type: "engine"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Eng.SetStatus(cad.SystemActor, "OFFLINE1", cad.Available, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Auth.SetMDTUnit("admin", "OFFLINE1"); err != nil {
+		t.Fatal(err)
+	}
+	c := login(t, ts, "admin", pw["admin"])
+	var base time.Time
+	var disposition string
+	s.Eng.Read(func(st *cad.State) { base = st.Units["OFFLINE1"].StatusAt; disposition = st.Settings.Dispositions[0] })
+	create := desktopCommand{Context: "live", ID: "fixture-offline-create-001", Owner: "admin", Unit: "OFFLINE1", Method: "POST", Path: "/mdt/incidents", Body: json.RawMessage(`{"type":"SF","location":{"address":"Synthetic location"}}`), BaseStatusAt: base.Format(time.RFC3339Nano), At: time.Now()}
+	code, body := c.do("POST", "/api/mdt/offline/sync", create, true)
+	if code != 200 {
+		t.Fatal(code, string(body))
+	}
+	var result struct{ Number string }
+	json.Unmarshal(body, &result)
+	receipt, ok := s.Eng.OfflineCommandResult("admin", create.ID)
+	if !ok || receipt.Number != result.Number {
+		t.Fatal("created call number missing from receipt")
+	}
+	s.Eng.Read(func(st *cad.State) {
+		if !receipt.At.Equal(st.Units["OFFLINE1"].StatusAt) {
+			t.Fatal("call receipt has wrong unit timestamp")
+		}
+	})
+	if code, body = c.do("POST", "/api/mdt/offline/sync", create, true); code != 200 || !strings.Contains(string(body), result.Number) {
+		t.Fatal("lost creation acknowledgement cannot recover call number", code, string(body))
+	}
+	raw, _ := json.Marshal(map[string]string{"incident": result.Number, "disposition": disposition})
+	closeCmd := desktopCommand{Context: "live", ID: "fixture-offline-close-0001", Owner: "admin", Unit: "OFFLINE1", Method: "POST", Path: "/mdt/close", Incident: result.Number, Body: raw, BaseStatusAt: "local:" + create.ID, At: time.Now()}
+	if code, body = c.do("POST", "/api/mdt/offline/sync", closeCmd, true); code != 204 {
+		t.Fatal(code, string(body))
+	}
+}
+
 func TestDesktopOfflineUnitBindingDeduplicationAndConflicts(t *testing.T) {
 	ts, s, pw := newServer(t)
 	s.LAS = true

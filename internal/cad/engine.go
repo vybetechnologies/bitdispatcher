@@ -682,9 +682,12 @@ type NewIncident struct {
 
 // CreateIncident creates an incident. From a call, it takes the call's location and caller unless given.
 func (e *Engine) CreateIncident(a Actor, n NewIncident) (string, error) {
-	n.Type = strings.ToUpper(strings.TrimSpace(n.Type))
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	return e.createIncidentLocked(a, n)
+}
+func (e *Engine) createIncidentLocked(a Actor, n NewIncident) (string, error) {
+	n.Type = strings.ToUpper(strings.TrimSpace(n.Type))
 	ct, ok := e.st.CallTypes[n.Type]
 	if !ok {
 		return "", problem("type", "choose a call type")
@@ -844,6 +847,9 @@ func (e *Engine) DispatchOverride(a Actor, number string, units, recommended []s
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	return e.dispatchLocked(a, number, units, recommended, reason, plan, override)
+}
+func (e *Engine) dispatchLocked(a Actor, number string, units, recommended []string, reason, plan, override string) error {
 	if _, err := e.openIncident(number); err != nil {
 		return err
 	}
@@ -993,6 +999,9 @@ func (e *Engine) CheckUnit(a Actor, unit, note string) error {
 func (e *Engine) CloseIncident(a Actor, number, disposition, text string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	return e.closeIncidentLocked(a, number, disposition, text)
+}
+func (e *Engine) closeIncidentLocked(a Actor, number, disposition, text string) error {
 	in, err := e.openIncident(number)
 	if err != nil {
 		return err

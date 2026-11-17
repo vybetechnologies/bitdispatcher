@@ -586,6 +586,12 @@ func (s *State) applyCore(e ledger.Event) error {
 		for _, h := range v.Items {
 			s.addHistory(h)
 		}
+	case EvReportDeleted:
+		v, err := decode[rptStatus](e)
+		if err != nil {
+			return err
+		}
+		s.applyReportDeleted(v.Number)
 	case EvReportSaved:
 		v, err := decode[rptData](e)
 		if err != nil {

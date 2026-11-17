@@ -10,7 +10,7 @@ export type Announcement = { id: string; text: string; priority: number }
 export type LookupCaution = {id:number;text:string}
 const words = (s?: string) => (s || '').replace(/\s+/g,' ').trim().slice(0,600)
 /** Input is only the assigned unit's already-authorized terminal/inbox data. */
-export function voiceSnapshot(m: MDTView, messages: CommView[], weather: WeatherFeature[] = [],lookupCaution?:LookupCaution|null): Announcement[] {
+export function voiceSnapshot(m: MDTView, messages: CommView[], weather: WeatherFeature[] = [],lookupCaution?:LookupCaution|null,fbiCaution?:LookupCaution|null): Announcement[] {
   const out: Announcement[]=[]
   const add=(id:string,text:string,priority=2)=>out.push({id,text:words(text),priority})
   const i=m.incident
@@ -18,6 +18,7 @@ export function voiceSnapshot(m: MDTView, messages: CommView[], weather: Weather
   add('status',`Unit ${m.unit.id}. Status ${statusMeta(m.unit.status).label}.`,1)
   for(const call of m.pending||[])add('pending:'+call.number,`New call for service. ${call.type}. Priority ${call.priority}. ${words(call.location?.address)}. Call ${call.number}.`,call.priority<=2?1:2)
   if(lookupCaution)add('lookup-caution:'+lookupCaution.id,lookupCaution.text,-1)
+  if(fbiCaution)add('fbi-caution:'+fbiCaution.id,fbiCaution.text,0)
   if(i) {
     for(const p of i.persons||[])if(p.agencyEmployee&&!p.removed)add('employee:'+i.number+':'+p.id,`Agency employee information. ${words(p.name)||'A subject on this call'} is an employee of Lakes Area Security.`,2)
     add('call-status',`Call ${i.number}. ${i.status}. Priority ${i.priority}.`)
@@ -46,7 +47,7 @@ export function changedAnnouncements(before: Map<string,string>, next: Announcem
   return next.filter(n=>before.get(n.id)!==n.text)
 }
 
-export default function MdtVoice({ m, messages, weather = [],lookupCaution, connected }: {m:MDTView|null;messages:CommView[];weather?:WeatherFeature[];lookupCaution?:LookupCaution|null;connected:boolean}) {
+export default function MdtVoice({ m, messages, weather = [],lookupCaution,fbiCaution, connected }: {m:MDTView|null;messages:CommView[];weather?:WeatherFeature[];lookupCaution?:LookupCaution|null;fbiCaution?:LookupCaution|null;connected:boolean}) {
   const [enabled,setEnabled]=useState(false)
   const [voices,setVoices]=useState<SpeechSynthesisVoice[]>([])
   const [voice,setVoice]=useState('')
@@ -128,14 +129,13 @@ export default function MdtVoice({ m, messages, weather = [],lookupCaution, conn
     if(!connected){
       // A completed person search is fresh authenticated data even if the
       // separate live call stream is reconnecting. Still speak its caution.
-      const key=lookupCaution?'lookup-caution:'+lookupCaution.id:''
-      pending.current=pending.current.filter(n=>n.id===key)
-      if(currentSpoken.current?.id!==key)stop()
-      const text=words(lookupCaution?.text)
-      if(lookupCaution&&seen.current.get(key)!==text){seen.current.set(key,text);enqueue([{id:key,text,priority:-1}])}
+      const notices=[...(lookupCaution?[{id:'lookup-caution:'+lookupCaution.id,text:words(lookupCaution.text),priority:-1}]:[]),...(fbiCaution?[{id:'fbi-caution:'+fbiCaution.id,text:words(fbiCaution.text),priority:0}]:[])]
+      const keys=new Set(notices.map(n=>n.id));pending.current=pending.current.filter(n=>keys.has(n.id))
+      if(!keys.has(currentSpoken.current?.id||''))stop()
+      const changed=notices.filter(n=>seen.current.get(n.id)!==n.text);for(const n of changed)seen.current.set(n.id,n.text);enqueue(changed)
       return
     }
-    const next=voiceSnapshot(m,messages,weather,lookupCaution)
+    const next=voiceSnapshot(m,messages,weather,lookupCaution,fbiCaution)
     // Seed the current pending queue on entry; announce new calls rather than
     // reading an old backlog each time the officer opens the terminal.
     const firstSnapshot=seen.current.size===0
@@ -157,7 +157,7 @@ export default function MdtVoice({ m, messages, weather = [],lookupCaution, conn
     enqueue(changed)
     // Speech callbacks read current settings through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[enabled,m,messages,weather,lookupCaution,connected])
+  },[enabled,m,messages,weather,lookupCaution,fbiCaution,connected])
   useEffect(()=>{
     const cancel=()=>off()
     window.addEventListener('bd:locked',cancel);window.addEventListener('bd:signedout',cancel)

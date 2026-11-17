@@ -20,6 +20,8 @@ func (s *Server) mdtRoutes() {
 	s.handle("POST /api/mdt/note", auth.Viewer, s.mdtNote)
 	s.handle("POST /api/mdt/position", auth.Viewer, s.mdtPosition)
 	s.handle("POST /api/mdt/emergency", auth.Viewer, s.mdtEmergency)
+	s.handle("POST /api/mdt/incidents", auth.Viewer, s.mdtCreateIncident)
+	s.handle("POST /api/mdt/close", auth.Viewer, s.mdtCloseIncident)
 }
 
 // mdtUnit is the unit a session works as: a field crew's own; a dispatcher may name one (for testing a
@@ -73,20 +75,27 @@ func firstNonEmptyStr(v ...string) string {
 }
 
 // MDTView is the terminal's screen.
+type MDTCallType struct {
+	Code     string `json:"code"`
+	Name     string `json:"name"`
+	Priority int    `json:"priority"`
+}
 type MDTView struct {
-	ServerTime time.Time       `json:"serverTime"`
-	Unit       UnitView        `json:"unit"`
-	Station    *cad.Station    `json:"station,omitempty"`
-	Incident   *cad.Incident   `json:"incident,omitempty"`
-	TypeName   string          `json:"typeName,omitempty"`
-	Summary    string          `json:"summary,omitempty"`   // the incident in a paragraph
-	Partners   []UnitView      `json:"partners"`            // other units on the incident
-	Premises   []*cad.Premise  `json:"premises"`            // hazards and notes at the incident's place
-	Emergency  *cad.Emergency  `json:"emergency,omitempty"` // the unit's open emergency
-	Pending    []*cad.Incident `json:"pending"`             // waiting for a unit, nearest first is the client's job
-	Statuses   []string        `json:"statuses"`
-	BOLOs      []*cad.BOLO     `json:"bolos"` // active BOLOs for the unit's discipline
-	Settings   struct {
+	CallTypes    []MDTCallType   `json:"callTypes"`
+	Dispositions []string        `json:"dispositions"`
+	ServerTime   time.Time       `json:"serverTime"`
+	Unit         UnitView        `json:"unit"`
+	Station      *cad.Station    `json:"station,omitempty"`
+	Incident     *cad.Incident   `json:"incident,omitempty"`
+	TypeName     string          `json:"typeName,omitempty"`
+	Summary      string          `json:"summary,omitempty"`   // the incident in a paragraph
+	Partners     []UnitView      `json:"partners"`            // other units on the incident
+	Premises     []*cad.Premise  `json:"premises"`            // hazards and notes at the incident's place
+	Emergency    *cad.Emergency  `json:"emergency,omitempty"` // the unit's open emergency
+	Pending      []*cad.Incident `json:"pending"`             // waiting for a unit, nearest first is the client's job
+	Statuses     []string        `json:"statuses"`
+	BOLOs        []*cad.BOLO     `json:"bolos"` // active BOLOs for the unit's discipline
+	Settings     struct {
 		Agency    string     `json:"agency"`
 		MapCenter [2]float64 `json:"mapCenter"`
 		MapZoom   float64    `json:"mapZoom"`
@@ -194,6 +203,13 @@ func (s *Server) mdt(w http.ResponseWriter, r *http.Request, se *auth.Session, a
 			}
 		}
 		v.SelfAttach = st.Settings.Duties.SelfAttach
+		v.Dispositions = append([]string{}, st.Settings.Dispositions...)
+		v.CallTypes = []MDTCallType{}
+		for _, ct := range st.CallTypes {
+			if u.Agency == "" || ct.For(u.Agency) {
+				v.CallTypes = append(v.CallTypes, MDTCallType{ct.Code, ct.Name, ct.Priority})
+			}
+		}
 		v.Settings.Agency, v.Settings.MapCenter, v.Settings.MapZoom, v.Settings.AVLStale = st.Settings.Agency, st.Settings.MapCenter, st.Settings.MapZoom, st.Settings.AVLStaleSeconds
 		v.Settings.MarkOuts = []cad.MarkOutType{}
 		d := st.Discipline(u)

@@ -97,6 +97,9 @@ export default function Rms() {
 }
 
 function Editor({ number, meta, me, onSaved }: { number: string; meta: Meta; me: Session | null; onSaved: () => void }) {
+  const nav=useNavigate()
+  const deleting=useRef(false)
+  const [deleteBusy,setDeleteBusy]=useState(false)
   const [r, setR] = useState<Report | null>(null)
   const [checks, setChecks] = useState<Check[]>([])
   const [agency, setAgency] = useState<Check[]>([])
@@ -109,8 +112,9 @@ function Editor({ number, meta, me, onSaved }: { number: string; meta: Meta; me:
   const editable = !!r && (r.status === 'draft' || r.status === 'returned') && (r.author === me?.username || can.supervise(me))
   // Drafts save themselves a moment after typing stops: no Save button to forget.
   useEffect(() => {
-    if (!r || !dirty.current || !editable) return
+    if (!r || !dirty.current || !editable || deleteBusy) return
     const t = setTimeout(async () => {
+      if(deleting.current)return
       setSaving(true)
       try {
         const x = await api.post<{ report: Report; checks: Check[]; agency?: Check[] }>('/rms/reports', r)
@@ -126,7 +130,7 @@ function Editor({ number, meta, me, onSaved }: { number: string; meta: Meta; me:
     }, 900)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r])
+  }, [r,deleteBusy])
   const offenseName = useMemo(() => Object.fromEntries(meta.offenses.map((o) => [o.code, o])), [meta])
   const c = meta.codes
   if (!r) return <p className="text-sm text-slate-500">Loading…</p>
@@ -159,6 +163,7 @@ function Editor({ number, meta, me, onSaved }: { number: string; meta: Meta; me:
           {r.incident && <Link to="/" onClick={() => store.select(r.incident!)} className="font-mono text-sm text-sky-300 underline">{r.incident}</Link>}
           <span className="text-xs text-slate-500">by {r.author}{r.approver && ` · ${r.status === 'approved' ? 'approved' : 'returned'} by ${r.approver}`}</span>
           <span className="ml-auto text-xs text-slate-500">{saving ? 'Saving…' : editable ? 'Saved as you type' : ''}</span>
+          {r.status==='draft'&&(r.author===me?.username||me?.role==='admin')&&<button className="btn border-rose-800 text-rose-200" disabled={deleteBusy} onClick={async()=>{if(!confirm('Delete this draft report? It will be removed from your reports and its incident. Submitted reports cannot be deleted.'))return;deleting.current=true;setDeleteBusy(true);try{const result=await api.del<{queued?:boolean}>('/rms/reports/'+encodeURIComponent(r.number));dirty.current=false;onSaved();nav(isWindowsMdt()?'/mdt/reports':'/rms');toast.success(result?.queued?'Draft deletion saved · pending sync':'Draft report deleted')}catch(e){deleting.current=false;setDeleteBusy(false);toast.error(errText(e))}}}><Trash2 size={14}/> Delete draft</button>}
         </div>
         {r.status === 'returned' && r.note && <p className="rounded border border-amber-700 bg-amber-950/30 p-2 text-sm text-amber-100">Returned: {r.note}</p>}
         <Box title="When and where">

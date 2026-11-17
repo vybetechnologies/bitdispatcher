@@ -42,6 +42,9 @@ type desktopCommand struct {
 var desktopCommandID = regexp.MustCompile("^[a-zA-Z0-9-]{16,80}$")
 
 func desktopWriteAllowed(method, path string) bool {
+	if method == "DELETE" && regexp.MustCompile("^/rms/reports/[A-Za-z0-9_-]+$").MatchString(path) {
+		return true
+	}
 	if strings.ContainsAny(path, "?#%") || strings.Contains(path, "..") {
 		return false
 	}
@@ -52,7 +55,7 @@ func desktopWriteAllowed(method, path string) bool {
 		return false
 	}
 	switch path {
-	case "/mdt/status", "/mdt/markout", "/mdt/note", "/mdt/position", "/mdt/emergency", "/mdt/message", "/mdt/attach", "/rms/reports":
+	case "/mdt/incidents", "/mdt/close", "/mdt/status", "/mdt/markout", "/mdt/note", "/mdt/position", "/mdt/emergency", "/mdt/message", "/mdt/attach", "/rms/reports":
 		return true
 	}
 	return regexp.MustCompile("^/mdt/message/[A-Za-z0-9-]+/read$").MatchString(path) || regexp.MustCompile("^/comms/[A-Za-z0-9_-]+/(open|ack)$").MatchString(path) || regexp.MustCompile("^/incidents/[A-Za-z0-9_-]+/files$").MatchString(path)
@@ -99,6 +102,7 @@ func (s *Server) desktopRoutes() {
 			}
 			result := map[string]any{"applied": true, "duplicate": true, "id": prior.ID, "key": prior.Key, "appliedUpdated": prior.Updated}
 			if prior.Number != "" {
+				result["number"] = prior.Number
 				s.Eng.Read(func(st *cad.State) {
 					if rp := st.Reports[prior.Number]; rp != nil {
 						result["report"] = rp
@@ -168,7 +172,7 @@ func (s *Server) desktopRoutes() {
 			w.WriteHeader(204)
 			return
 		}
-		if cmd.Path == "/mdt/status" || cmd.Path == "/mdt/markout" || cmd.Path == "/mdt/attach" || cmd.Path == "/mdt/crew" {
+		if cmd.Path == "/mdt/incidents" || cmd.Path == "/mdt/close" || cmd.Path == "/mdt/status" || cmd.Path == "/mdt/markout" || cmd.Path == "/mdt/attach" || cmd.Path == "/mdt/crew" {
 			base := cmd.BaseStatusAt
 			if strings.HasPrefix(base, "local:") {
 				previous, found := s.Eng.OfflineCommandResult(a.User, strings.TrimPrefix(base, "local:"))

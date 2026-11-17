@@ -19,6 +19,7 @@ import MdtBulletins from './Bulletins'
 import MdtRoads from './Roads'
 import RecordSearch from './RecordSearch'
 import MdtReports from './Reports'
+import IncidentActions from './IncidentActions'
 import MdtVoice from './Voice'
 import type { LookupCaution } from './Voice'
 import EmergencyButton from './EmergencyButton'
@@ -35,6 +36,7 @@ import { IncidentFlags, PlaceLine } from '../console/IncidentExtras'
 maplibregl.setWorkerUrl(workerUrl)
 
 export type MDTView = {
+  callTypes?:{code:string;name:string;priority:number}[];dispositions?:string[]
   serverTime: string; unit: Unit; station?: Station; incident?: Incident; typeName?: string; summary?: string; partners: Unit[]; premises?: Premise[]
   emergency?: { key: string; raised: string; ackedBy?: string }; pending: Incident[]; statuses: string[]; bolos?: BOLO[]
   settings: { agency: string; mapCenter: [number, number]; mapZoom: number; avlStaleSeconds: number; markOuts?: MarkOutType[] }
@@ -58,6 +60,7 @@ export default function Mdt() {
   const stream = useStore((s) => s.stream)
   const [voiceMessages, setVoiceMessages] = useState<CommView[]>([])
   const [lookupCaution,setLookupCaution]=useState<LookupCaution|null>(null)
+  const [fbiCaution,setFbiCaution]=useState<LookupCaution|null>(null)
   const lookupRun=useRef(0)
   const [weatherAlerts, setWeatherAlerts] = useState<WeatherFeature[]>([])
   const [m, setM] = useState<MDTView | null>(null)
@@ -181,7 +184,7 @@ export default function Mdt() {
         <div className="mdt-brand"><Logo size={28}/><span>LAS <b>OPERATIONS</b></span></div>
         <ModuleSwitcher compact/>
         <div className="mdt-toolbar-spacer"/>
-        <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} lookupCaution={lookupCaution} connected={isWindowsMdt()||!err && stream === 'live'} />
+        <MdtVoice m={m} messages={voiceMessages} weather={weatherAlerts} lookupCaution={lookupCaution} fbiCaution={fbiCaution} connected={isWindowsMdt()||!err && stream === 'live'} />
         <button className="btn" onClick={()=>setLookupOpen(true)}><Search size={15} aria-hidden/> Persons &amp; vehicles</button>
         {(m.roster?.length ?? 0)>0&&<button className="btn" onClick={()=>setCrewOpen(true)}><HardHat size={15} aria-hidden/> Crew{u!.crew?.length ? ` (${u!.crew.length})` : ''}</button>}
         <button className="mdt-reports-link" onClick={()=>setReportsOpen(true)} aria-expanded={reportsOpen}>My reports</button>
@@ -194,7 +197,7 @@ export default function Mdt() {
       {m.emergency && !m.emergency.ackedBy && (
         <div role="alert" className="animate-pulse bg-rose-700 px-3 py-2 text-center text-lg font-black tracking-wide">{m.emergency.key.startsWith('OFFLINE-')?'EMERGENCY QUEUED — NOT SENT. USE RADIO / PHONE':'EMERGENCY SENT'} {clock(m.emergency.raised, now)} · {m.emergency.key.startsWith('OFFLINE-')?'waiting for connection':'waiting for dispatch to acknowledge'}</div>
       )}
-      {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} onCaution={text=>setLookupCaution(text?{id:++lookupRun.current,text}:null)} />}
+      {lookupOpen&&<RecordSearch onClose={()=>setLookupOpen(false)} onCaution={text=>setLookupCaution(text?{id:++lookupRun.current,text}:null)} onFbiCaution={text=>setFbiCaution(text?{id:++lookupRun.current,text}:null)}/>}
       {reportsOpen&&<MdtReports onClose={()=>setReportsOpen(false)}/>}
       <main className="mdt-deck">
         <aside className="mdt-left" aria-label="Your unit and status">
@@ -207,6 +210,7 @@ export default function Mdt() {
             <div className="mdt-unit-row"><span className={cx('mdt-gps',gps==='on'&&sendGps&&'mdt-gps-on')}><LocateFixed size={12} aria-hidden/> GPS {!sendGps?'off':gps==='on'?isWindowsMdt()&&!desktopState().connected?'recording offline':'sending':gps==='denied'?'blocked: allow location':gps==='none'?'not available':'waiting'}</span><button className="btn mdt-gps-toggle" onClick={()=>setSendGps(v=>!v)}>{sendGps?'Stop GPS':'Share device GPS'}</button></div>
           </section>
           <section className="mdt-card" aria-label="Unit status"><h2 className="mdt-card-title">Status</h2>
+          <div className="mb-3 flex flex-wrap gap-2"><IncidentActions m={m} onSaved={load}/></div>
           <div className="mdt-status-list">
             {BUTTONS.map((b) => (
               <button

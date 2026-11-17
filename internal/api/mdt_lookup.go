@@ -93,6 +93,7 @@ func lookupMinor(dob, approximateAge string, now time.Time) bool {
 }
 
 func (s *Server) mdtLookupRoutes() {
+	s.fbiWantedRoutes()
 	s.handle("POST /api/mdt/records/search", auth.Viewer, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
 		unit, ok := s.mdtUnit(w, r, se)
 		if !ok {

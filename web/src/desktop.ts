@@ -11,6 +11,7 @@ let state:DesktopState={connected:true,pending:0,lastSync:0,error:'',preparing:f
 let identity:{session:Session}|null=null
 let initialized:Promise<void>|null=null
 let writeChain=Promise.resolve()
+let queueMutation=Promise.resolve()
 let flushing:Promise<void>|null=null
 let preparation=0
 const results=new Map<string,Response>()
@@ -32,9 +33,15 @@ const commandKey=(id:string)=>'command:'+scope()+':'+id
 const cacheKey=(path:string)=>'cache:'+scope()+':'+path
 async function init(){if(!initialized)initialized=(async()=>{identity=await read<{session:Session}>('identity');await refreshCount()})();await initialized}
 async function ids(){return await read<string[]>(queueKey())||[]}
+async function mutateQueue(change:(ids:string[])=>string[]){
+ const key=queueKey()
+ const operation=queueMutation.then(async()=>{await save(key,change(await read<string[]>(key)||[]))})
+ queueMutation=operation.catch(()=>{})
+ await operation
+}
 export async function desktopOutbox(){if(!isWindowsMdt())return [];await init();const list:DesktopCommand[]=[];for(const id of await ids()){const item=await read<DesktopCommand>(commandKey(id));if(item)list.push(item)}return list}
 async function refreshCount(){if(identity)announce({pending:(await ids()).length});else announce({pending:0})}
-async function remove(id:string){await save(queueKey(),(await ids()).filter(x=>x!==id));await window.lasDesktop!.call('delete',commandKey(id));await refreshCount()}
+async function remove(id:string){await mutateQueue(list=>list.filter(x=>x!==id));await window.lasDesktop!.call('delete',commandKey(id));await refreshCount()}
 export async function discardDesktopCommand(id:string){await init();await serialize(async()=>remove(id));announce({error:''})}
 export async function retryDesktopSync(){announce({error:''});await syncDesktop(true)}
 export async function recoverLegacyLiveEntries(){
@@ -63,7 +70,14 @@ async function project(data:MDTView){
  for(const cmd of await desktopOutbox()){
   if(cmd.error)continue
   const b=cmd.Body
-  if(cmd.Path==='/mdt/status'){
+  if(cmd.Path==='/mdt/incidents'){
+   const number='OFFLINE-'+cmd.ID
+   const ct=m.callTypes?.find(t=>t.code===b.type)
+   m.incident={number,type:String(b.type),priority:Number(b.priority)||ct?.priority||3,location:b.location as NonNullable<MDTView['incident']>['location'],status:'active',created:cmd.At,updated:cmd.At,createdBy:cmd.Owner,calls:[],units:[{unit:cmd.Unit,status:'dispatched',dispatched:cmd.At,recommended:false}],timeline:[{seq:0,at:cmd.At,text:String(b.narrative||''),kind:'created',actor:cmd.Owner}]}
+   m.typeName=ct?.name||String(b.type);m.summary=String(b.narrative||'');m.unit.incident=number;m.unit.status='dispatched';m.unit.statusAt=cmd.At;m.offlineStatusAt='local:'+cmd.ID
+  }else if(cmd.Path==='/mdt/close'){
+   m.unit.incident=undefined;m.incident=undefined;m.unit.status='available';m.unit.statusAt=cmd.At;m.offlineStatusAt='local:'+cmd.ID
+  }else if(cmd.Path==='/mdt/status'){
    m.unit.status=String(b.status);m.unit.statusAt=cmd.At;m.offlineStatusAt='local:'+cmd.ID
    if(['available','oos'].includes(m.unit.status)){m.unit.incident=undefined;m.incident=undefined}
   }else if(cmd.Path==='/mdt/markout'){m.unit.status='markout';m.unit.statusAt=cmd.At;m.offlineStatusAt='local:'+cmd.ID;m.unit.incident=undefined;m.incident=undefined}
@@ -97,7 +111,8 @@ async function prepare(){
  finally{announce({preparing:false})}
 }
 function allowed(method:string,path:string){
- return method==='PUT'&&path==='/mdt/crew'||method==='POST'&&(['/mdt/status','/mdt/markout','/mdt/note','/mdt/position','/mdt/emergency','/mdt/message','/mdt/attach','/rms/reports'].includes(path)||/^\/mdt\/message\/[A-Za-z0-9-]+\/read$/.test(path)||/^\/comms\/[A-Za-z0-9_-]+\/(open|ack)$/.test(path)||/^\/incidents\/[A-Za-z0-9_-]+\/files$/.test(path))
+ if(method==='DELETE'&&/^\/rms\/reports\/[A-Za-z0-9_-]+$/.test(path))return true
+ return method==='PUT'&&path==='/mdt/crew'||method==='POST'&&(['/mdt/incidents','/mdt/close','/mdt/status','/mdt/markout','/mdt/note','/mdt/position','/mdt/emergency','/mdt/message','/mdt/attach','/rms/reports'].includes(path)||/^\/mdt\/message\/[A-Za-z0-9-]+\/read$/.test(path)||/^\/comms\/[A-Za-z0-9_-]+\/(open|ack)$/.test(path)||/^\/incidents\/[A-Za-z0-9_-]+\/files$/.test(path))
 }
 async function queueWrite(method:string,path:string,body:Record<string,unknown>,extra:Partial<DesktopCommand>={}){
  if(!identity?.session.mdtUnit)throw new Error('Sign in online with your assigned MDT unit before working offline.')
@@ -105,7 +120,8 @@ async function queueWrite(method:string,path:string,body:Record<string,unknown>,
  const m=await project(cachedMdt.data);const id=crypto.randomUUID()
  const cmd:DesktopCommand={ID:id,Context:workContext(identity.session),Owner:identity.session.username,Unit:identity.session.mdtUnit,Method:method,Path:path,Body:structuredClone(body),Incident:m.unit.incident||'',BaseStatusAt:m.offlineStatusAt||m.unit.statusAt,At:new Date().toISOString(),...extra}
  if(path==='/rms/reports'&&!body.number){cmd.localReport='OFFLINE-'+id}
- await save(commandKey(id),cmd);await save(queueKey(),[...await ids(),id]);await refreshCount()
+ await save(commandKey(id),cmd);await mutateQueue(list=>[...list,id]);await refreshCount()
+ if(method==='DELETE'&&path.startsWith('/rms/reports/')){const number=path.split('/').pop();const list=await cached<Record<string,unknown>[]>('/rms/reports');await putCache('/rms/reports',(list?.data||[]).filter(r=>r.number!==number));await window.lasDesktop!.call('delete',cacheKey(path))}
  if(path==='/rms/reports'){
   const number=String(body.number||cmd.localReport);const report={...body,number,status:body.status||'draft',author:identity.session.username,updated:body.updated||cmd.At,created:body.created||cmd.At,offenses:body.offenses||[],people:body.people||[],property:body.property||[],vehicles:body.vehicles||[]}
   await putCache('/rms/reports/'+number,{report,checks:[],agency:[]})
@@ -114,6 +130,7 @@ async function queueWrite(method:string,path:string,body:Record<string,unknown>,
  return cmd
 }
 async function queuedResponse(cmd:DesktopCommand){
+ if(cmd.Path==='/mdt/incidents')return reply({queued:true,number:'OFFLINE-'+cmd.ID})
  if(cmd.Path==='/rms/reports'){return reply((await cached('/rms/reports/'+String(cmd.Body.number||cmd.localReport)))?.data)}
  return reply({queued:true,id:'OFFLINE-'+cmd.ID,key:'OFFLINE-'+cmd.ID})
 }
@@ -133,6 +150,11 @@ export async function syncDesktop(retryRefused=false){
     attempted.add(cmd.ID)
     const mappings=await read<Record<string,{number:string;updated:string}>>('reports:'+scope())||{}
     const payload=structuredClone(cmd);delete payload.error;delete payload.status
+    const incidents=await read<Record<string,string>>('incidents:'+scope())||{}
+    if(incidents[payload.Incident])payload.Incident=incidents[payload.Incident]
+    if(typeof payload.Body.incident==='string'&&incidents[payload.Body.incident])payload.Body.incident=incidents[payload.Body.incident]
+    if(payload.Path.startsWith('/incidents/'))for(const [alias,number] of Object.entries(incidents))payload.Path=payload.Path.replace('/incidents/'+alias+'/', '/incidents/'+number+'/')
+    if(cmd.Method==='DELETE'&&cmd.Path.startsWith('/rms/reports/')){const alias=cmd.Path.split('/').pop()!;if(mappings[alias])payload.Path='/rms/reports/'+mappings[alias].number}
     if(cmd.Path==='/rms/reports'){
      const alias=String(cmd.Body.number||'');if(mappings[alias]){payload.Body.number=mappings[alias].number;payload.Body.updated=mappings[alias].updated}
     }
@@ -142,12 +164,13 @@ export async function syncDesktop(retryRefused=false){
      cmd.error=error.message||'Sync refused this action';cmd.status=response.status;await save(commandKey(cmd.ID),cmd);if(awaitingResult.has(cmd.ID))results.set(cmd.ID,response);announce({error:cmd.error});continue
     }
     if(awaitingResult.has(cmd.ID))results.set(cmd.ID,response.clone())
+    if(cmd.Path==='/mdt/incidents'){const result=await response.clone().json() as {number:string};if(!result.number)throw new Error('Call was accepted but its number is unavailable; keep the saved entry and retry.');incidents['OFFLINE-'+cmd.ID]=result.number;await save('incidents:'+scope(),incidents)}
     if(cmd.Path==='/rms/reports'){
      const result=await response.clone().json() as {report?:{number:string;updated:string};appliedUpdated?:string}
      if(result.report){const value={number:result.report.number,updated:result.appliedUpdated||result.report.updated};mappings[String(cmd.Body.number||cmd.localReport)]=value;mappings[value.number]=value;await save('reports:'+scope(),mappings);await putCache('/rms/reports/'+value.number,result)}
     }
     await remove(cmd.ID)
-    if(['/mdt/status','/mdt/markout','/mdt/attach','/mdt/crew'].includes(cmd.Path)){try{const fresh=await network('GET','/mdt');if(fresh.ok)await putCache('/mdt',await fresh.json())}catch{/* The command receipt remains valid when the follow-up view cannot load. */}}
+    if(['/mdt/incidents','/mdt/close','/mdt/status','/mdt/markout','/mdt/attach','/mdt/crew'].includes(cmd.Path)){try{const fresh=await network('GET','/mdt');if(fresh.ok)await putCache('/mdt',await fresh.json())}catch{/* The command receipt remains valid when the follow-up view cannot load. */}}
     const refused=(await desktopOutbox()).find(x=>x.error)
     announce({lastSync:Date.now(),error:refused?.error||''});window.dispatchEvent(new Event('las:synced'))
    }
