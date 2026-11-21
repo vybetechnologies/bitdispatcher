@@ -310,6 +310,7 @@ func (s *Server) desktopRecords(w http.ResponseWriter, r *http.Request, se *auth
 			hit := mdtLookupHit{RegisteredOwner: s.mdtRegisteredOwner(st, record.RegisteredOwnerID, own.Agency, a, now), Cautions: record.Cautions, Ownership: record.Ownership, OwnerName: record.OwnerName, Record: record.ID, Source: record.Source, Seen: record.Updated, Name: record.Name, DOB: record.DOB, Sex: record.Sex, Description: record.Description, Plate: record.Plate, State: record.State, VIN: record.VIN, Year: record.Year, Make: record.Make, Model: record.Model, Color: record.Color, Body: record.Body, Safety: record.Safety || len(flags) > 0, Flags: flags}
 			if record.Kind == "person" {
 				hit.Person = &p
+				hit.Associates = s.personAssociates(st, record.ID, own.Agency, a, now)
 			}
 			records = append(records, hit)
 		}

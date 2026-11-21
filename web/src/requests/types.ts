@@ -40,6 +40,7 @@ export type VehicleLink = { person: string; relation: string }
 // Person as entered on an incident (a superset of the shared Person; the new fields are all optional so a
 // value posted to POST/PUT /api/incidents/{n}/persons matches the Go struct).
 export type Person = {
+ employer?: import('../records/RecordDetails').EmployerInfo
  registeredSexOffender?: boolean
  offenderProfileUrl?: string
  photo?: string

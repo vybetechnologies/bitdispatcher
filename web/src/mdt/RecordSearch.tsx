@@ -1,3 +1,4 @@
+import PersonProfile from './PersonProfile'
 import { RecordDetailsDisplay, recordDetailsAnnouncement } from '../records/RecordDetails'
 import type {RecordCaution} from '../records/RecordDetails'
 import { useEffect, useRef, useState } from 'react'
@@ -30,6 +31,8 @@ export function personCautionAnnouncement(result:Results):string {
 
 /** Private local-record lookup, kept inside MDT so it never changes the user's duty or assigned unit. */
 export default function RecordSearch({onClose,onCaution,onFbiCaution}:{onClose:()=>void;onCaution?:(text:string)=>void;onFbiCaution?:(text:string)=>void}) {
+ const [profile,setProfile]=useState<string|null>(null)
+ const openProfile=(id:string)=>{onFbiCaution?.('');setProfile(id)}
  const [fbiQuery,setFbiQuery]=useState<FbiQuery|null>(null)
  const [kind,setKind]=useState<'person'|'vehicle'>('person')
  const [name,setName]=useState('')
@@ -52,7 +55,7 @@ export default function RecordSearch({onClose,onCaution,onFbiCaution}:{onClose:(
   finally{if(request.current===id)setBusy(false)}
  }
  return <Modal open onClose={onClose} title="Persons & vehicles" icon={<Search size={18} className="text-amber-300" />} wide>
-  <div className="space-y-4">
+  {profile?<PersonProfile initial={profile} purpose={purpose} onBack={()=>setProfile(null)} renderPerson={p=><PersonDetails person={p}/>} onLoaded={p=>onCaution?.(personCautionAnnouncement({kind:'person',items:[{...p,incident:''}],more:false,source:'LAS records',searchedAt:p.seen}))}/>:<div className="space-y-4">
    <div className="flex gap-2" role="tablist" aria-label="Record type">
     <button role="tab" aria-selected={kind==='person'} aria-controls="mdt-lookup-panel" id="mdt-person-tab" disabled={busy} onClick={()=>changeKind('person')} className={cx('btn min-h-11 flex-1 justify-center',kind==='person'&&'border-amber-500/60 bg-amber-500/15 text-amber-200')}><UserRound size={17} aria-hidden /> Persons</button>
     <button role="tab" aria-selected={kind==='vehicle'} aria-controls="mdt-lookup-panel" id="mdt-vehicle-tab" disabled={busy} onClick={()=>changeKind('vehicle')} className={cx('btn min-h-11 flex-1 justify-center',kind==='vehicle'&&'border-amber-500/60 bg-amber-500/15 text-amber-200')}><Car size={17} aria-hidden /> Vehicles</button>
@@ -91,8 +94,8 @@ export default function RecordSearch({onClose,onCaution,onFbiCaution}:{onClose:(
      <div className="flex flex-wrap items-start gap-2"><h3 className="flex-1 text-base font-semibold text-slate-100">{result.kind==='person'?hit.name:[hit.plate||'No plate recorded',hit.state].filter(Boolean).join(' · ')}</h3><span className="chip border border-slate-600 text-xs text-slate-300">Local record · possible match</span></div>
      {result.kind==='person'?<><p className="mt-1 text-sm text-slate-300">DOB {hit.dob||'not recorded'}{hit.sex?` · Sex ${hit.sex}`:''}</p>{hit.description&&<p className="mt-1 text-sm text-slate-400">{hit.description}</p>}</>:<><p className="mt-1 text-sm text-slate-300">{[hit.color,hit.year,hit.make,hit.model,hit.body].filter(Boolean).join(' · ')||'Description not recorded'}</p><p className="mt-1 font-mono text-sm text-slate-400">VIN {hit.vin||'not recorded'}</p></>}
      {result.kind==='vehicle'&&hit.description&&<p className="mt-1 text-sm text-slate-400">{hit.description}</p>}
-     <RecordDetailsDisplay person={hit.person} cautions={hit.cautions} ownership={hit.ownership} ownerName={hit.ownerName}/>{hit.person&&<PersonDetails person={hit.person}/>}
-     {hit.registeredOwner&&<details className="mt-2 rounded border border-slate-600 p-2 text-sm"><summary className="cursor-pointer font-semibold text-amber-200">Registered owner · {hit.registeredOwner.name}</summary><p className="mt-2 text-xs text-slate-400">Linked local person record {hit.registeredOwner.record} · DOB {hit.registeredOwner.dob||'not recorded'}. Ownership is recorded information, not confirmation of the current driver.</p><RecordDetailsDisplay person={hit.registeredOwner.person}/>{hit.registeredOwner.person&&<PersonDetails person={hit.registeredOwner.person}/>} {hit.registeredOwner.flags?.map(f=><div key={f.id} className="mt-2 rounded border border-rose-700 p-2 text-rose-200"><b>Registered owner safety flag · {f.title}</b><p>{f.warning}</p><p>{f.instruction}</p></div>)}</details>}
+     <RecordDetailsDisplay person={hit.person} cautions={hit.cautions} ownership={hit.ownership} ownerName={hit.ownerName}/>{hit.person&&<PersonDetails person={hit.person}/>} {result.kind==='person'&&<button className="btn mt-2" onClick={()=>openProfile(hit.person?.recordId||hit.record)}>View person & associates</button>}
+     {hit.registeredOwner&&<details className="mt-2 rounded border border-slate-600 p-2 text-sm"><summary className="cursor-pointer font-semibold text-amber-200">Registered owner · {hit.registeredOwner.name}</summary><button className="btn mt-2" onClick={()=>openProfile(hit.registeredOwner!.record)}>View owner & associates</button><p className="mt-2 text-xs text-slate-400">Linked local person record {hit.registeredOwner.record} · DOB {hit.registeredOwner.dob||'not recorded'}. Ownership is recorded information, not confirmation of the current driver.</p><RecordDetailsDisplay person={hit.registeredOwner.person}/>{hit.registeredOwner.person&&<PersonDetails person={hit.registeredOwner.person}/>} {hit.registeredOwner.flags?.map(f=><div key={f.id} className="mt-2 rounded border border-rose-700 p-2 text-rose-200"><b>Registered owner safety flag · {f.title}</b><p>{f.warning}</p><p>{f.instruction}</p></div>)}</details>}
      {hit.person?.agencyEmployee&&<p className="mt-2 rounded border border-teal-600 bg-teal-950/40 p-2 text-sm font-semibold text-teal-200">LAS employee · agency affiliation (informational)</p>}
      {hit.flags?.map(f=><div key={f.id} role="alert" className="mt-2 rounded border border-rose-700 bg-rose-950/40 p-2 text-sm text-rose-100"><b>Officer safety · {f.title}</b><p>{f.warning}</p><p>{f.instruction}</p><span className="font-mono text-xs">{f.id}</span></div>)}
      {!!hit.incidents?.length&&<p className="mt-2 text-xs text-amber-200">Connected incidents: {hit.incidents.map(r=>`${r.incident} (${r.role})`).join(' · ')}</p>}
@@ -100,7 +103,7 @@ export default function RecordSearch({onClose,onCaution,onFbiCaution}:{onClose:(
      <p className="mt-2 text-xs text-slate-500">{hit.source || 'LAS incident'} <span className="font-mono text-slate-300">{hit.incident || hit.record}</span> · recorded {new Date(hit.seen).toLocaleDateString()}</p>
     </article>)}
    </section>}
-  </div>
+  </div>}
  </Modal>
 }
 function PersonDetails({person:p}:{person:Person}){

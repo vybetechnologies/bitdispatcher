@@ -50,6 +50,7 @@ func (s *Server) mdtRegisteredOwner(st *cad.State, id, agency string, a cad.Acto
 }
 
 type mdtLookupHit struct {
+	Associates      []personAssociate   `json:"associates,omitempty"`
 	RegisteredOwner *mdtRegisteredOwner `json:"registeredOwner,omitempty"`
 	Cautions        []cad.RecordCaution `json:"cautions,omitempty"`
 	Ownership       string              `json:"ownership,omitempty"`
@@ -122,6 +123,7 @@ func lookupMinor(dob, approximateAge string, now time.Time) bool {
 
 func (s *Server) mdtLookupRoutes() {
 	s.fbiWantedRoutes()
+	s.personProfileRoutes()
 	s.handle("POST /api/mdt/records/search", auth.Viewer, func(w http.ResponseWriter, r *http.Request, se *auth.Session, a cad.Actor) {
 		unit, ok := s.mdtUnit(w, r, se)
 		if !ok {
@@ -244,7 +246,7 @@ func (s *Server) mdtLookupRoutes() {
 							refs = append(refs, ref)
 						}
 					}
-					hits = append(hits, mdtLookupHit{Flags: flags, Person: &p, Incidents: refs, Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety || len(flags) > 0})
+					hits = append(hits, mdtLookupHit{Associates: s.personAssociates(st, r.ID, own.Agency, a, now), Flags: flags, Person: &p, Incidents: refs, Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Name: r.Name, DOB: r.DOB, Sex: r.Sex, Description: r.Description, Safety: r.Safety || len(flags) > 0})
 				} else {
 					if plate != "" && !strings.Contains(lookupID(r.Plate), plate) || vin != "" && !strings.Contains(lookupID(r.VIN), vin) || q.State != "" && !strings.EqualFold(q.State, r.State) {
 						continue

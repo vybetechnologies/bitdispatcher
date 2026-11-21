@@ -99,6 +99,7 @@ type Security struct {
 
 // Person is someone on an incident: the caller, a victim, a suspect, a witness.
 type Person struct {
+	Employer              *EmployerInfo   `json:"employer,omitempty"`
 	RegisteredSexOffender bool            `json:"registeredSexOffender,omitempty"`
 	OffenderProfileURL    string          `json:"offenderProfileUrl,omitempty"`
 	Photo                 string          `json:"photo,omitempty"`

@@ -12,40 +12,41 @@ import (
 const EvLASRecords = "las.records.saved"
 
 type LASRecord struct {
-	RegisteredOwnerID   string          `json:"registeredOwnerId,omitempty"`
-	RegisteredOwnerName string          `json:"registeredOwnerName,omitempty"`
-	Cautions            []RecordCaution `json:"cautions,omitempty"`
-	Ownership           string          `json:"ownership,omitempty"`
-	OwnerName           string          `json:"ownerName,omitempty"`
-	FlagIDs             []string        `json:"flagIds,omitempty"`
-	Flags               []*Flag         `json:"flags,omitempty"`
-	Incidents           []PersonRef     `json:"incidents,omitempty"`
-	Person              *Person         `json:"person,omitempty"`
-	FromIncident        string          `json:"fromIncident,omitempty"`
-	ID                  string          `json:"id"`
-	Version             int             `json:"version"`
-	Kind                string          `json:"kind"`
-	Agency              string          `json:"agency,omitempty"`
-	ExternalID          string          `json:"externalId,omitempty"`
-	Name                string          `json:"name,omitempty"`
-	Aliases             []string        `json:"aliases,omitempty"`
-	DOB                 string          `json:"dob,omitempty"`
-	Sex                 string          `json:"sex,omitempty"`
-	Description         string          `json:"description,omitempty"`
-	Plate               string          `json:"plate,omitempty"`
-	State               string          `json:"state,omitempty"`
-	VIN                 string          `json:"vin,omitempty"`
-	Year                string          `json:"year,omitempty"`
-	Make                string          `json:"make,omitempty"`
-	Model               string          `json:"model,omitempty"`
-	Color               string          `json:"color,omitempty"`
-	Body                string          `json:"body,omitempty"`
-	Source              string          `json:"source"`
-	Safety              bool            `json:"safetyConcern"`
-	Restricted          bool            `json:"restricted"`
-	Archived            bool            `json:"archived"`
-	Updated             time.Time       `json:"updated"`
-	By                  string          `json:"by"`
+	Relationships       []PersonRelationship `json:"relationships,omitempty"`
+	RegisteredOwnerID   string               `json:"registeredOwnerId,omitempty"`
+	RegisteredOwnerName string               `json:"registeredOwnerName,omitempty"`
+	Cautions            []RecordCaution      `json:"cautions,omitempty"`
+	Ownership           string               `json:"ownership,omitempty"`
+	OwnerName           string               `json:"ownerName,omitempty"`
+	FlagIDs             []string             `json:"flagIds,omitempty"`
+	Flags               []*Flag              `json:"flags,omitempty"`
+	Incidents           []PersonRef          `json:"incidents,omitempty"`
+	Person              *Person              `json:"person,omitempty"`
+	FromIncident        string               `json:"fromIncident,omitempty"`
+	ID                  string               `json:"id"`
+	Version             int                  `json:"version"`
+	Kind                string               `json:"kind"`
+	Agency              string               `json:"agency,omitempty"`
+	ExternalID          string               `json:"externalId,omitempty"`
+	Name                string               `json:"name,omitempty"`
+	Aliases             []string             `json:"aliases,omitempty"`
+	DOB                 string               `json:"dob,omitempty"`
+	Sex                 string               `json:"sex,omitempty"`
+	Description         string               `json:"description,omitempty"`
+	Plate               string               `json:"plate,omitempty"`
+	State               string               `json:"state,omitempty"`
+	VIN                 string               `json:"vin,omitempty"`
+	Year                string               `json:"year,omitempty"`
+	Make                string               `json:"make,omitempty"`
+	Model               string               `json:"model,omitempty"`
+	Color               string               `json:"color,omitempty"`
+	Body                string               `json:"body,omitempty"`
+	Source              string               `json:"source"`
+	Safety              bool                 `json:"safetyConcern"`
+	Restricted          bool                 `json:"restricted"`
+	Archived            bool                 `json:"archived"`
+	Updated             time.Time            `json:"updated"`
+	By                  string               `json:"by"`
 }
 
 func LASRecordKey(r LASRecord) string {
@@ -185,6 +186,13 @@ func (e *Engine) NormalizeLASRecord(r *LASRecord) error {
 	return e.prepareLASPerson(r)
 }
 func (e *Engine) prepareLASPerson(r *LASRecord) error {
+	if err := e.validatePersonRelationships(*r); err != nil {
+		return err
+	}
+	r.Relationships = append([]PersonRelationship(nil), r.Relationships...)
+	for i := range r.Relationships {
+		r.Relationships[i].Name = e.st.LASRecords[r.Relationships[i].PersonID].Name
+	}
 	if r.RegisteredOwnerID != "" {
 		owner, ok := e.st.LASRecords[r.RegisteredOwnerID]
 		if r.Kind != "vehicle" || !ok || owner.Kind != "person" {
@@ -326,6 +334,7 @@ func (s *State) syncLASPerson(in *Incident, p Person, at time.Time, by string) {
 		p.AgencyEmployee = r.Person.AgencyEmployee
 		p.RegisteredSexOffender = r.Person.RegisteredSexOffender
 		p.OffenderProfileURL = r.Person.OffenderProfileURL
+		p.Employer = r.Person.Employer
 		p.Photo = r.Person.Photo
 		p.Cautions = r.Person.Cautions
 		p.Warrants = r.Person.Warrants

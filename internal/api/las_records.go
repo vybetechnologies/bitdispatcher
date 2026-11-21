@@ -124,8 +124,8 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 			return nil, fmt.Errorf("CSV header is missing")
 		}
 		allowed := map[string]bool{}
-		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,agencyEmployee,safety,safetyNote,photo,cautions,warrants,registeredSexOffender,offenderProfileUrl"
-		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,ownership,ownerName,registeredOwnerId,"+personFields, ",") {
+		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,agencyEmployee,safety,safetyNote,photo,cautions,warrants,registeredSexOffender,offenderProfileUrl,employer"
+		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,ownership,ownerName,registeredOwnerId,relationships,"+personFields, ",") {
 			allowed[h] = true
 		}
 		seen := map[string]bool{}
@@ -154,7 +154,7 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 				if v == "" {
 					continue
 				}
-				if h == "phones" || h == "safetyNote" || h == "cautions" || h == "warrants" {
+				if h == "phones" || h == "safetyNote" || h == "cautions" || h == "warrants" || h == "employer" || h == "relationships" {
 					var nested any
 					if err := json.Unmarshal([]byte(v), &nested); err != nil {
 						return nil, fmt.Errorf("CSV row %d: %s must be JSON", row, h)
@@ -277,6 +277,10 @@ func (s *Server) lasRecordRoutes() {
 		kind := r.URL.Query().Get("kind")
 		s.Eng.Read(func(st *cad.State) {
 			for _, v := range st.LASRecords {
+				v.Relationships = append([]cad.PersonRelationship(nil), v.Relationships...)
+				for i := range v.Relationships {
+					v.Relationships[i].Name = st.LASRecords[v.Relationships[i].PersonID].Name
+				}
 				if owner, ok := st.LASRecords[v.RegisteredOwnerID]; ok && owner.Kind == "person" {
 					v.RegisteredOwnerName = owner.Name
 				}

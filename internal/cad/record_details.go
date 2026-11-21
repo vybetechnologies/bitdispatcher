@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+type EmployerInfo struct {
+	Name       string `json:"name,omitempty"`
+	Occupation string `json:"occupation,omitempty"`
+	Address    string `json:"address,omitempty"`
+	Phone      string `json:"phone,omitempty"`
+	Notes      string `json:"notes,omitempty"`
+}
+
 // These attributed local entries supplement, rather than replace, core flags.
 type RecordCaution struct {
 	Type  string `json:"type"`
@@ -40,6 +48,13 @@ func ValidateRecordCautions(items []RecordCaution) error {
 	return nil
 }
 func ValidatePersonRecordDetails(p *Person) error {
+	if p.Employer != nil {
+		for _, v := range []string{p.Employer.Name, p.Employer.Occupation, p.Employer.Address, p.Employer.Phone, p.Employer.Notes} {
+			if len(v) > 600 {
+				return fmt.Errorf("employer fields must be at most 600 characters")
+			}
+		}
+	}
 	if p.OffenderProfileURL != "" {
 		u, err := url.Parse(p.OffenderProfileURL)
 		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || len(p.OffenderProfileURL) > 1000 {

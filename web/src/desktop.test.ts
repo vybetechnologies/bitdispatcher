@@ -137,3 +137,15 @@ describe('Windows MDT durable offline work',()=>{
   expect(draft.report.narrative).toBe('Synthetic offline draft')
  })
 })
+
+it('opens downloaded person profiles and their associates while fully offline',async()=>{
+ const files=storageFixture();files.set('cache:alex|U1:/mdt/offline/records',JSON.stringify({at:Date.now(),data:{at:'2026-11-21',records:[{record:'P1',person:{name:'Alpha',employer:{name:'Test Company'}},associates:[{record:'P2',name:'Beta',type:'friend'}]},{record:'P2',person:{name:'Beta'},associates:[{record:'P1',name:'Alpha',type:'friend'}]}]}}))
+ vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')))
+ const desktop=await import('./desktop')
+ const first=await(await desktop.desktopRequest('POST','/mdt/records/person',{record:'P1',purpose:'patrol'})).json()
+ expect(first.person.employer.name).toBe('Test Company');expect(first.associates[0].record).toBe('P2')
+ const second=await(await desktop.desktopRequest('POST','/mdt/records/person',{record:first.associates[0].record,purpose:'patrol'})).json()
+ expect(second.person.name).toBe('Beta')
+ expect((await desktop.desktopRequest('POST','/mdt/records/person',{record:'not-downloaded',purpose:'patrol'})).status).toBe(404)
+ expect(await desktop.desktopOutbox()).toHaveLength(0)
+})

@@ -28,3 +28,9 @@ it('opens official links safely and rejects executable link display',()=>{
  rerender(<RecordDetailsDisplay person={{registeredSexOffender:true,offenderProfileUrl:'javascript:alert(1)'}}/> )
  expect(screen.queryByRole('link')).toBeNull()
 })
+
+it('edits employer information without replacing other optional person fields',()=>{
+ const change=vi.fn();render(<PersonRecordEditor value={{employer:{name:'Test Company',phone:'5550100'}}} onChange={change}/>)
+ fireEvent.change(screen.getByLabelText('Occupation / job title'),{target:{value:'Security officer'}})
+ expect(change).toHaveBeenCalledWith({employer:{name:'Test Company',phone:'5550100',occupation:'Security officer'}})
+})

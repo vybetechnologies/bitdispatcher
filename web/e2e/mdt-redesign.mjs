@@ -35,6 +35,7 @@ try{
    else if(path==='/weather/alerts')data={features:[],checked:now,scope:'Cass / Clay',stale:false}
    else if(path==='/rms/reports')data=[{number:'R-TEST-1',status:'draft',author:'fixture',updated:now,location:'Synthetic training location',offenses:[],people:[],property:[],vehicles:[]}]
    else if(path==='/mdt/records/search'){const q=JSON.parse(request.postData()||'{}');data={kind:q.kind,items:q.kind==='person'?[{record:'P-TEST',seen:now,name:'Test Person',person:{registeredSexOffender:true,offenderProfileUrl:'https://registry.example/fixture',warrants:[{number:'W-TEST',agency:'Test court',offense:'Fixture charge',status:'active'}],cautions:[{type:'Weapons',level:'danger',note:'Fixture caution'}]}}]:[{record:'V-TEST',seen:now,plate:'TEST123',registeredOwner:{record:'P-OWNER',name:'Test Registered Owner',dob:'1980-01-01',person:{id:'P-OWNER',role:'subject',name:'Test Registered Owner',registeredSexOffender:true,offenderProfileUrl:'https://registry.example/owner'}},ownership:'employee',ownerName:'Test Employee',cautions:[{type:'Stolen plate',level:'danger'}]}],source:'Test local records',searchedAt:now}}
+   else if(path==='/mdt/records/person'){const q=JSON.parse(request.postData()||'{}');const graph={'P-TEST':{record:'P-TEST',name:'Test Person',person:{id:'P-TEST',name:'Test Person',role:'subject',employer:{name:'Test Company',occupation:'Security officer'}},associates:[{record:'P-B',name:'Test Associate',type:'friend'}]},'P-B':{record:'P-B',name:'Test Associate',person:{id:'P-B',name:'Test Associate',role:'subject'},associates:[{record:'P-C',name:'Third Person',type:'coworker'}]},'P-C':{record:'P-C',name:'Third Person',person:{id:'P-C',name:'Third Person',role:'subject'},associates:[{record:'P-TEST',name:'Test Person',type:'associate'}]}};data={...graph[q.record],seen:now}}
    else if(path==='/mdt/offline/records')data={records:[],at:now}
    else if(path==='/mdt/windows-release')data={Available:true,Version:'test'}
    else if(path.startsWith('/map/')||path==='/mdt/offline/map-package'){await route.fulfill({status:404,body:''});return}
@@ -68,6 +69,16 @@ try{
   await page.getByRole('button',{name:'Search LAS records'}).click()
   await page.getByRole('link',{name:'Official offender profile'}).waitFor()
   assert(await page.getByText('Warrant W-TEST · ACTIVE').count()===1)
+  await page.getByRole('button',{name:'View person & associates',exact:true}).click()
+  await page.getByRole('heading',{name:'Test Person',exact:true}).waitFor()
+  await page.getByText('Employer · Test Company').waitFor()
+  await page.getByRole('button',{name:'friend · Test Associate',exact:true}).click()
+  await page.getByRole('heading',{name:'Test Associate',exact:true}).waitFor()
+  await page.getByRole('button',{name:'coworker · Third Person',exact:true}).click()
+  await page.getByRole('heading',{name:'Third Person',exact:true}).waitFor()
+  await page.getByRole('button',{name:'associate · Test Person',exact:true}).click()
+  await page.getByRole('heading',{name:'Test Person',exact:true}).waitFor()
+  await page.getByRole('button',{name:'Back to search results',exact:true}).click()
   await page.getByRole('tab',{name:'Vehicles',exact:true}).click()
   await page.getByLabel('Plate',{exact:true}).fill('TEST123')
   await page.getByRole('button',{name:'Search LAS records'}).click()

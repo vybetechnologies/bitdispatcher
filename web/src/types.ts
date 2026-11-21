@@ -68,6 +68,7 @@ export type Incident = { files?: IncidentFile[]; droneClips?: DroneClip[]; proto
 }
 
 export type Person = {
+ employer?: import('./records/RecordDetails').EmployerInfo
  registeredSexOffender?: boolean
  offenderProfileUrl?: string
  photo?: string

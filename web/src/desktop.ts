@@ -222,6 +222,7 @@ export async function desktopRequest(method:string,path:string,body?:unknown):Pr
  }catch(error){
   announce({connected:false})
   if(path==='/auth/me'&&identity)return reply({signedIn:true,session:identity.session})
+  if(path==='/mdt/records/person'){const snapshot=await cached<{records:Record<string,unknown>[];at:string}>('/mdt/offline/records');const record=snapshot?.data.records.find(p=>p.person&&p.record===(body as {record?:string})?.record);return record?reply(record):reply({error:'Person record is not downloaded on this device.'},404)}
   if(path==='/mdt/records/search')return offlineLookup((body||{}) as Record<string,unknown>)
   if(path==='/map/routes'){
    const map=await window.lasDesktop!.call('map','/api/map/routes',{...body as Record<string,unknown>,roads:(await cached('/roads'))?.data}) as {Status:number;Data:string}
