@@ -25,30 +25,55 @@ type mdtLookupQuery struct {
 	VIN     string `json:"vin"`
 	Purpose string `json:"purpose"`
 }
+type mdtRegisteredOwner struct {
+	Record string      `json:"record"`
+	Name   string      `json:"name"`
+	DOB    string      `json:"dob,omitempty"`
+	Person *cad.Person `json:"person,omitempty"`
+	Flags  []*cad.Flag `json:"flags,omitempty"`
+}
+
+func (s *Server) mdtRegisteredOwner(st *cad.State, id, agency string, a cad.Actor, now time.Time) *mdtRegisteredOwner {
+	r, ok := st.LASRecords[id]
+	if !ok || r.Kind != "person" || r.Archived || r.Restricted || (r.Agency != "" && !strings.EqualFold(r.Agency, agency)) {
+		return nil
+	}
+	p := cad.LASRecordPerson(r)
+	if lookupMinor(p.DOB, p.ApproxAge, now) {
+		return nil
+	}
+	flags := []*cad.Flag{}
+	for _, f := range st.LASPersonFlags(r.ID, p, now) {
+		flags = append(flags, st.FlagFor(f, cad.DutyOf(a), a.Role))
+	}
+	return &mdtRegisteredOwner{Record: r.ID, Name: r.Name, DOB: r.DOB, Person: &p, Flags: flags}
+}
+
 type mdtLookupHit struct {
-	Cautions    []cad.RecordCaution `json:"cautions,omitempty"`
-	Ownership   string              `json:"ownership,omitempty"`
-	OwnerName   string              `json:"ownerName,omitempty"`
-	Flags       []*cad.Flag         `json:"flags,omitempty"`
-	Person      *cad.Person         `json:"person,omitempty"`
-	Incidents   []cad.PersonRef     `json:"incidents,omitempty"`
-	Source      string              `json:"source,omitempty"`
-	Record      string              `json:"record"`
-	Incident    string              `json:"incident"`
-	Seen        time.Time           `json:"seen"`
-	Name        string              `json:"name,omitempty"`
-	DOB         string              `json:"dob,omitempty"`
-	Sex         string              `json:"sex,omitempty"`
-	Description string              `json:"description,omitempty"`
-	Safety      bool                `json:"safetyConcern,omitempty"`
-	Plate       string              `json:"plate,omitempty"`
-	State       string              `json:"state,omitempty"`
-	VIN         string              `json:"vin,omitempty"`
-	Year        string              `json:"year,omitempty"`
-	Make        string              `json:"make,omitempty"`
-	Model       string              `json:"model,omitempty"`
-	Color       string              `json:"color,omitempty"`
-	Body        string              `json:"body,omitempty"`
+	RegisteredOwner *mdtRegisteredOwner `json:"registeredOwner,omitempty"`
+	Cautions        []cad.RecordCaution `json:"cautions,omitempty"`
+	Ownership       string              `json:"ownership,omitempty"`
+	OwnerName       string              `json:"ownerName,omitempty"`
+	Flags           []*cad.Flag         `json:"flags,omitempty"`
+	Person          *cad.Person         `json:"person,omitempty"`
+	Incidents       []cad.PersonRef     `json:"incidents,omitempty"`
+	Source          string              `json:"source,omitempty"`
+	Record          string              `json:"record"`
+	Incident        string              `json:"incident"`
+	Seen            time.Time           `json:"seen"`
+	Name            string              `json:"name,omitempty"`
+	DOB             string              `json:"dob,omitempty"`
+	Sex             string              `json:"sex,omitempty"`
+	Description     string              `json:"description,omitempty"`
+	Safety          bool                `json:"safetyConcern,omitempty"`
+	Plate           string              `json:"plate,omitempty"`
+	State           string              `json:"state,omitempty"`
+	VIN             string              `json:"vin,omitempty"`
+	Year            string              `json:"year,omitempty"`
+	Make            string              `json:"make,omitempty"`
+	Model           string              `json:"model,omitempty"`
+	Color           string              `json:"color,omitempty"`
+	Body            string              `json:"body,omitempty"`
 }
 
 func lookupID(value string) string {
@@ -224,7 +249,7 @@ func (s *Server) mdtLookupRoutes() {
 					if plate != "" && !strings.Contains(lookupID(r.Plate), plate) || vin != "" && !strings.Contains(lookupID(r.VIN), vin) || q.State != "" && !strings.EqualFold(q.State, r.State) {
 						continue
 					}
-					hits = append(hits, mdtLookupHit{Cautions: r.Cautions, Ownership: r.Ownership, OwnerName: r.OwnerName, Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
+					hits = append(hits, mdtLookupHit{RegisteredOwner: s.mdtRegisteredOwner(st, r.RegisteredOwnerID, own.Agency, a, now), Cautions: r.Cautions, Ownership: r.Ownership, OwnerName: r.OwnerName, Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
 				}
 			}
 		})

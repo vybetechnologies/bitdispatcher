@@ -34,7 +34,7 @@ try{
    else if(path==='/comms')data={items:[],priorities:[]}
    else if(path==='/weather/alerts')data={features:[],checked:now,scope:'Cass / Clay',stale:false}
    else if(path==='/rms/reports')data=[{number:'R-TEST-1',status:'draft',author:'fixture',updated:now,location:'Synthetic training location',offenses:[],people:[],property:[],vehicles:[]}]
-   else if(path==='/mdt/records/search'){const q=JSON.parse(request.postData()||'{}');data={kind:q.kind,items:q.kind==='person'?[{record:'P-TEST',seen:now,name:'Test Person',person:{registeredSexOffender:true,offenderProfileUrl:'https://registry.example/fixture',warrants:[{number:'W-TEST',agency:'Test court',offense:'Fixture charge',status:'active'}],cautions:[{type:'Weapons',level:'danger',note:'Fixture caution'}]}}]:[{record:'V-TEST',seen:now,plate:'TEST123',ownership:'employee',ownerName:'Test Employee',cautions:[{type:'Stolen plate',level:'danger'}]}],source:'Test local records',searchedAt:now}}
+   else if(path==='/mdt/records/search'){const q=JSON.parse(request.postData()||'{}');data={kind:q.kind,items:q.kind==='person'?[{record:'P-TEST',seen:now,name:'Test Person',person:{registeredSexOffender:true,offenderProfileUrl:'https://registry.example/fixture',warrants:[{number:'W-TEST',agency:'Test court',offense:'Fixture charge',status:'active'}],cautions:[{type:'Weapons',level:'danger',note:'Fixture caution'}]}}]:[{record:'V-TEST',seen:now,plate:'TEST123',registeredOwner:{record:'P-OWNER',name:'Test Registered Owner',dob:'1980-01-01',person:{id:'P-OWNER',role:'subject',name:'Test Registered Owner',registeredSexOffender:true,offenderProfileUrl:'https://registry.example/owner'}},ownership:'employee',ownerName:'Test Employee',cautions:[{type:'Stolen plate',level:'danger'}]}],source:'Test local records',searchedAt:now}}
    else if(path==='/mdt/offline/records')data={records:[],at:now}
    else if(path==='/mdt/windows-release')data={Available:true,Version:'test'}
    else if(path.startsWith('/map/')||path==='/mdt/offline/map-package'){await route.fulfill({status:404,body:''});return}
@@ -73,6 +73,9 @@ try{
   await page.getByRole('button',{name:'Search LAS records'}).click()
   await page.getByText('LAS employee-owned vehicle · Test Employee').waitFor()
   await page.getByText('Stolen plate',{exact:true}).waitFor()
+  await page.getByText('Registered owner · Test Registered Owner',{exact:true}).click()
+  await page.getByText('Linked local person record P-OWNER',{exact:false}).waitFor()
+  assert(await page.getByRole('link',{name:'Official offender profile'}).count()===1)
   await page.keyboard.press('Escape')
   await page.getByRole('button',{name:/Mark out…/}).click();await page.getByLabel('Mark-out note').fill('Synthetic note')
   await page.screenshot({path:`${out}/${native?'windows':'web'}-markout.png`})

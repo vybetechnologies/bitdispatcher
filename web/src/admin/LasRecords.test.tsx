@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import LasRecords from './LasRecords'
 import { api } from '../api'
 vi.mock('./Admin',()=>({Page:({children,title}:{children:React.ReactNode;title:string})=><div><h1>{title}</h1>{children}</div>,Table:({children}:{children:React.ReactNode})=><table><tbody>{children}</tbody></table>}))
+vi.mock('../requests/codes',async importOriginal=>({...await importOriginal<typeof import('../requests/codes')>(),useCodes:()=>null}))
 vi.mock('sonner',()=>({toast:{error:vi.fn(),success:vi.fn()}}))
 afterEach(()=>{cleanup();vi.restoreAllMocks()})
 it('creates an officer-searchable person using the administration API',async()=>{
@@ -27,4 +28,14 @@ it('requires validated preview before committing an import',async()=>{
  post.mockResolvedValueOnce({created:1,skipped:0})
  fireEvent.click(screen.getByText('Import 1 records'))
  await waitFor(()=>expect(post).toHaveBeenCalledWith('/admin/las-records/import',expect.objectContaining({commit:true})))
+})
+
+it('saves a vehicle with an optional registered-owner person link',async()=>{
+ vi.spyOn(api,'get').mockResolvedValue({items:[{id:'LASR-P1',kind:'person',name:'Test Owner',source:'Fixture'}],total:1})
+ const post=vi.spyOn(api,'post').mockResolvedValue({id:'LASR-V1'})
+ render(<LasRecords/>);fireEvent.click(screen.getByText('Create record'));fireEvent.click(screen.getByText('Create a vehicle instead'))
+ fireEvent.change(screen.getByLabelText('Plate',{exact:true}),{target:{value:'TEST123'}})
+ fireEvent.change(screen.getByLabelText('Find registered owner'),{target:{value:'Test Owner'}});fireEvent.click(screen.getByText('Find local person'))
+ await waitFor(()=>expect(screen.getByText('Link as registered owner')).toBeTruthy());fireEvent.click(screen.getByText('Link as registered owner'))
+ fireEvent.click(screen.getByText('Save record'));await waitFor(()=>expect(post).toHaveBeenCalledWith('/admin/las-records',expect.objectContaining({kind:'vehicle',plate:'TEST123',registeredOwnerId:'LASR-P1'})))
 })

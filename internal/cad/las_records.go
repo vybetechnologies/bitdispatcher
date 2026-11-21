@@ -12,38 +12,40 @@ import (
 const EvLASRecords = "las.records.saved"
 
 type LASRecord struct {
-	Cautions     []RecordCaution `json:"cautions,omitempty"`
-	Ownership    string          `json:"ownership,omitempty"`
-	OwnerName    string          `json:"ownerName,omitempty"`
-	FlagIDs      []string        `json:"flagIds,omitempty"`
-	Flags        []*Flag         `json:"flags,omitempty"`
-	Incidents    []PersonRef     `json:"incidents,omitempty"`
-	Person       *Person         `json:"person,omitempty"`
-	FromIncident string          `json:"fromIncident,omitempty"`
-	ID           string          `json:"id"`
-	Version      int             `json:"version"`
-	Kind         string          `json:"kind"`
-	Agency       string          `json:"agency,omitempty"`
-	ExternalID   string          `json:"externalId,omitempty"`
-	Name         string          `json:"name,omitempty"`
-	Aliases      []string        `json:"aliases,omitempty"`
-	DOB          string          `json:"dob,omitempty"`
-	Sex          string          `json:"sex,omitempty"`
-	Description  string          `json:"description,omitempty"`
-	Plate        string          `json:"plate,omitempty"`
-	State        string          `json:"state,omitempty"`
-	VIN          string          `json:"vin,omitempty"`
-	Year         string          `json:"year,omitempty"`
-	Make         string          `json:"make,omitempty"`
-	Model        string          `json:"model,omitempty"`
-	Color        string          `json:"color,omitempty"`
-	Body         string          `json:"body,omitempty"`
-	Source       string          `json:"source"`
-	Safety       bool            `json:"safetyConcern"`
-	Restricted   bool            `json:"restricted"`
-	Archived     bool            `json:"archived"`
-	Updated      time.Time       `json:"updated"`
-	By           string          `json:"by"`
+	RegisteredOwnerID   string          `json:"registeredOwnerId,omitempty"`
+	RegisteredOwnerName string          `json:"registeredOwnerName,omitempty"`
+	Cautions            []RecordCaution `json:"cautions,omitempty"`
+	Ownership           string          `json:"ownership,omitempty"`
+	OwnerName           string          `json:"ownerName,omitempty"`
+	FlagIDs             []string        `json:"flagIds,omitempty"`
+	Flags               []*Flag         `json:"flags,omitempty"`
+	Incidents           []PersonRef     `json:"incidents,omitempty"`
+	Person              *Person         `json:"person,omitempty"`
+	FromIncident        string          `json:"fromIncident,omitempty"`
+	ID                  string          `json:"id"`
+	Version             int             `json:"version"`
+	Kind                string          `json:"kind"`
+	Agency              string          `json:"agency,omitempty"`
+	ExternalID          string          `json:"externalId,omitempty"`
+	Name                string          `json:"name,omitempty"`
+	Aliases             []string        `json:"aliases,omitempty"`
+	DOB                 string          `json:"dob,omitempty"`
+	Sex                 string          `json:"sex,omitempty"`
+	Description         string          `json:"description,omitempty"`
+	Plate               string          `json:"plate,omitempty"`
+	State               string          `json:"state,omitempty"`
+	VIN                 string          `json:"vin,omitempty"`
+	Year                string          `json:"year,omitempty"`
+	Make                string          `json:"make,omitempty"`
+	Model               string          `json:"model,omitempty"`
+	Color               string          `json:"color,omitempty"`
+	Body                string          `json:"body,omitempty"`
+	Source              string          `json:"source"`
+	Safety              bool            `json:"safetyConcern"`
+	Restricted          bool            `json:"restricted"`
+	Archived            bool            `json:"archived"`
+	Updated             time.Time       `json:"updated"`
+	By                  string          `json:"by"`
 }
 
 func LASRecordKey(r LASRecord) string {
@@ -71,6 +73,7 @@ func LASRecordKey(r LASRecord) string {
 	r.FlagIDs = nil
 	r.Flags = nil
 	r.Incidents = nil
+	r.RegisteredOwnerName = ""
 	if r.Person != nil {
 		p := *r.Person
 		p.ID = ""
@@ -124,6 +127,7 @@ func (e *Engine) saveLASRecords(a Actor, records []LASRecord, importing bool) ([
 	skipped := 0
 	for _, r := range records {
 		r.Incidents = nil
+		r.RegisteredOwnerName = ""
 		r.Flags = nil
 		if err := e.prepareLASPerson(&r); err != nil {
 			return nil, 0, err
@@ -181,6 +185,15 @@ func (e *Engine) NormalizeLASRecord(r *LASRecord) error {
 	return e.prepareLASPerson(r)
 }
 func (e *Engine) prepareLASPerson(r *LASRecord) error {
+	if r.RegisteredOwnerID != "" {
+		owner, ok := e.st.LASRecords[r.RegisteredOwnerID]
+		if r.Kind != "vehicle" || !ok || owner.Kind != "person" {
+			return fmt.Errorf("registered owner must link to an existing person record")
+		}
+		if owner.Agency != "" && !strings.EqualFold(owner.Agency, r.Agency) {
+			return fmt.Errorf("registered owner and vehicle must share agency scope")
+		}
+	}
 	if err := ValidateRecordCautions(r.Cautions); err != nil {
 		return err
 	}

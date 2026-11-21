@@ -43,7 +43,7 @@ func validateLASRecord(r *cad.LASRecord, importing bool) error {
 	if r.Kind != "person" && r.Kind != "vehicle" {
 		return fmt.Errorf("kind must be person or vehicle")
 	}
-	for _, p := range []*string{&r.ID, &r.Agency, &r.ExternalID, &r.Name, &r.DOB, &r.Sex, &r.Description, &r.Plate, &r.State, &r.VIN, &r.Year, &r.Make, &r.Model, &r.Color, &r.Body, &r.Source} {
+	for _, p := range []*string{&r.RegisteredOwnerID, &r.ID, &r.Agency, &r.ExternalID, &r.Name, &r.DOB, &r.Sex, &r.Description, &r.Plate, &r.State, &r.VIN, &r.Year, &r.Make, &r.Model, &r.Color, &r.Body, &r.Source} {
 		*p = strings.TrimSpace(*p)
 		if len(*p) > 600 || strings.ContainsFunc(*p, func(c rune) bool { return unicode.IsControl(c) && c != '\n' && c != '\t' }) {
 			return fmt.Errorf("fields must be at most 600 characters without control characters")
@@ -125,7 +125,7 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 		}
 		allowed := map[string]bool{}
 		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,agencyEmployee,safety,safetyNote,photo,cautions,warrants,registeredSexOffender,offenderProfileUrl"
-		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,ownership,ownerName,"+personFields, ",") {
+		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,ownership,ownerName,registeredOwnerId,"+personFields, ",") {
 			allowed[h] = true
 		}
 		seen := map[string]bool{}
@@ -277,6 +277,9 @@ func (s *Server) lasRecordRoutes() {
 		kind := r.URL.Query().Get("kind")
 		s.Eng.Read(func(st *cad.State) {
 			for _, v := range st.LASRecords {
+				if owner, ok := st.LASRecords[v.RegisteredOwnerID]; ok && owner.Kind == "person" {
+					v.RegisteredOwnerName = owner.Name
+				}
 				if v.Kind == "person" {
 					v.Incidents = st.LASPersonRefs(v.ID)
 					p := cad.LASRecordPerson(v)
@@ -371,6 +374,12 @@ func (s *Server) lasRecordRoutes() {
 		if err != nil {
 			fail(w, 422, err.Error())
 			return
+		}
+		for i := range records {
+			if err := s.Eng.NormalizeLASRecord(&records[i]); err != nil {
+				fail(w, 422, err.Error())
+				return
+			}
 		}
 		if b.Commit {
 			saved, skipped, err := s.Eng.SaveLASRecords(a, records, true)
