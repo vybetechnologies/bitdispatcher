@@ -41,3 +41,14 @@ func TestPersonAndVehicleRecordDetailsPersist(t *testing.T) {
 		t.Fatal("warrant status update failed", err)
 	}
 }
+
+func TestDocumentedWarrantCanPreserveMissingFields(t *testing.T) {
+	p := Person{Warrants: []PersonWarrant{{Agency: "Test county", Source: "Synthetic source.pdf", AsOf: "2026-03-31", SourcePage: "2", Bond: "No bond", Status: "active"}}}
+	if err := ValidatePersonRecordDetails(&p); err != nil {
+		t.Fatal("source listing without invented warrant number or charge rejected", err)
+	}
+	p.Warrants[0].Source = ""
+	if ValidatePersonRecordDetails(&p) == nil {
+		t.Fatal("undocumented empty warrant accepted")
+	}
+}

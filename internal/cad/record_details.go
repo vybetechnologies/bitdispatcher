@@ -27,6 +27,14 @@ type RecordCaution struct {
 	Note  string `json:"note,omitempty"`
 }
 type PersonWarrant struct {
+	Type         string `json:"type,omitempty"`
+	Court        string `json:"court,omitempty"`
+	Bond         string `json:"bond,omitempty"`
+	Extradition  string `json:"extradition,omitempty"`
+	CaseNumber   string `json:"caseNumber,omitempty"`
+	Source       string `json:"source,omitempty"`
+	AsOf         string `json:"asOf,omitempty"`
+	SourcePage   string `json:"sourcePage,omitempty"`
 	Number       string `json:"number"`
 	Agency       string `json:"agency"`
 	Offense      string `json:"offense"`
@@ -68,13 +76,18 @@ func ValidatePersonRecordDetails(p *Person) error {
 		return fmt.Errorf("at most 30 warrants")
 	}
 	for _, w := range p.Warrants {
-		if strings.TrimSpace(w.Number) == "" || strings.TrimSpace(w.Agency) == "" || strings.TrimSpace(w.Offense) == "" || len(w.Number) > 100 || len(w.Agency) > 120 || len(w.Offense) > 600 || len(w.Instructions) > 600 {
-			return fmt.Errorf("warrant number, issuing agency and offense are required and must fit field limits")
+		if strings.TrimSpace(w.Agency) == "" || (strings.TrimSpace(w.Offense) == "" && strings.TrimSpace(w.Type) == "" && strings.TrimSpace(w.Source) == "") || (strings.TrimSpace(w.Number) == "" && strings.TrimSpace(w.Source) == "") || len(w.Number) > 100 || len(w.Agency) > 120 || len(w.Offense) > 600 || len(w.Instructions) > 600 {
+			return fmt.Errorf("warrant requires an issuing agency and offense, type or documented source; a missing number requires a source")
 		}
 		if w.Status != "active" && w.Status != "recalled" && w.Status != "served" && w.Status != "expired" {
 			return fmt.Errorf("invalid warrant status")
 		}
-		for _, date := range []string{w.Issued, w.Expires} {
+		for _, v := range []string{w.Type, w.Court, w.Bond, w.Extradition, w.CaseNumber, w.Source, w.SourcePage} {
+			if len(v) > 600 {
+				return fmt.Errorf("warrant source and detail fields must be at most 600 characters")
+			}
+		}
+		for _, date := range []string{w.Issued, w.Expires, w.AsOf} {
 			if date != "" {
 				if _, err := time.Parse("2006-01-02", date); err != nil {
 					return fmt.Errorf("invalid warrant date")

@@ -34,3 +34,11 @@ it('edits employer information without replacing other optional person fields',(
  fireEvent.change(screen.getByLabelText('Occupation / job title'),{target:{value:'Security officer'}})
  expect(change).toHaveBeenCalledWith({employer:{name:'Test Company',phone:'5550100',occupation:'Security officer'}})
 })
+
+it('preserves report-dated warrants, missing numbers and bond/extradition details',()=>{
+ const warrants=[{number:'',agency:'Test county',offense:'',status:'active' as const,source:'Synthetic source.pdf',asOf:'2026-03-31',type:'Bench warrant',bond:'No bond',extradition:'North Dakota only',caseNumber:'CASE-TEST',sourcePage:'2'}]
+ render(<RecordDetailsDisplay person={{warrants}}/>)
+ expect(screen.getByText(/number not provided/)).toBeTruthy();expect(screen.getByText(/REPORTED ACTIVE/)).toBeTruthy()
+ expect(screen.getByText('Bond: No bond')).toBeTruthy();expect(screen.getByText('Extradition: North Dakota only')).toBeTruthy()
+ expect(recordDetailsAnnouncement({warrants})).toContain('reported active as of 2026-03-31')
+})
