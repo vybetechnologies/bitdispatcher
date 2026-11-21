@@ -158,6 +158,9 @@ func AgeFrom(dob string, on time.Time) int {
 
 // normPerson tidies a person and checks what the call-taker must give.
 func (e *Engine) normPerson(p *Person) error {
+	if err := ValidatePersonRecordDetails(p); err != nil {
+		return err
+	}
 	clean := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 	p.First, p.Middle, p.Last, p.Suffix = clean(p.First), clean(p.Middle), clean(p.Last), clean(p.Suffix)
 	if p.First == "" && p.Last == "" && p.Middle == "" && p.Name != "" {

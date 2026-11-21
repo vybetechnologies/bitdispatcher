@@ -18,6 +18,18 @@ import (
 
 func validateLASRecord(r *cad.LASRecord, importing bool) error {
 	r.Kind = strings.ToLower(strings.TrimSpace(r.Kind))
+	if err := cad.ValidateRecordCautions(r.Cautions); err != nil {
+		return err
+	}
+	if r.Ownership != "" && r.Ownership != "agency" && r.Ownership != "employee" {
+		return fmt.Errorf("invalid vehicle ownership")
+	}
+	if len(r.OwnerName) > 120 {
+		return fmt.Errorf("owner name is too long")
+	}
+	if r.Kind == "person" && (r.Ownership != "" || r.OwnerName != "" || len(r.Cautions) > 0) {
+		return fmt.Errorf("use person details for person cautions")
+	}
 	if r.Person != nil {
 		if r.Kind != "person" {
 			return fmt.Errorf("only person records have person details")
@@ -112,8 +124,8 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 			return nil, fmt.Errorf("CSV header is missing")
 		}
 		allowed := map[string]bool{}
-		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,agencyEmployee,safety,safetyNote"
-		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,"+personFields, ",") {
+		personFields := "first,middle,last,suffix,locKind,building,floor,unit,phone,phones,role,roles,address,race,ethnicity,height,weight,hair,eyes,clothing,smt,build,ssn,dl,dlState,approxAge,idType,idNumber,idState,notes,agencyEmployee,safety,safetyNote,photo,cautions,warrants,registeredSexOffender,offenderProfileUrl"
+		for _, h := range strings.Split("kind,agency,externalId,name,aliases,dob,sex,description,plate,state,vin,year,make,model,color,body,source,safetyConcern,restricted,ownership,ownerName,"+personFields, ",") {
 			allowed[h] = true
 		}
 		seen := map[string]bool{}
@@ -142,7 +154,7 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 				if v == "" {
 					continue
 				}
-				if h == "phones" || h == "safetyNote" {
+				if h == "phones" || h == "safetyNote" || h == "cautions" || h == "warrants" {
 					var nested any
 					if err := json.Unmarshal([]byte(v), &nested); err != nil {
 						return nil, fmt.Errorf("CSV row %d: %s must be JSON", row, h)
@@ -150,7 +162,7 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 					obj[h] = nested
 				} else if h == "aliases" || h == "roles" {
 					obj[h] = strings.Split(v, "|")
-				} else if h == "safetyConcern" || h == "restricted" || h == "safety" || h == "agencyEmployee" {
+				} else if h == "safetyConcern" || h == "restricted" || h == "safety" || h == "agencyEmployee" || h == "registeredSexOffender" {
 					b, e := strconv.ParseBool(v)
 					if e != nil {
 						return nil, fmt.Errorf("CSV row %d: %s must be true or false", row, h)
@@ -179,6 +191,7 @@ func parseLASImport(format, content string) ([]cad.LASRecord, error) {
 					}
 					p.Safety = p.Safety || r.Safety
 					r.Person = &p
+					r.Cautions = nil
 				}
 			}
 			records = append(records, r)

@@ -1,3 +1,4 @@
+import { CautionEditor, PersonRecordEditor, RecordDetailsDisplay } from '../records/RecordDetails'
 import { BRAND } from '../brand'
 import RecordPersonPicker from './RecordPersonPicker'
 import { useEffect, useState } from 'react'
@@ -164,7 +165,7 @@ function PersonCard({ p, inc, codes, onEdit, onRemove }: { p: Person; inc?: Inci
     .join(' · ')
   return (
     <li className={cx('panel rounded-md px-2 py-1.5 text-xs', p.safety && 'border-rose-700')}>
-      {p.agencyEmployee&&<span className="chip border border-teal-600 bg-teal-950/40 text-teal-200">LAS employee</span>}
+      <RecordDetailsDisplay person={p}/>{p.agencyEmployee&&<span className="chip border border-teal-600 bg-teal-950/40 text-teal-200">LAS employee</span>}
       <div className="flex items-start gap-2">
         <div className="flex flex-col gap-0.5">
           {roles.map((r, i) => (
@@ -308,6 +309,7 @@ export function PersonForm({ value, roles, codes, onCancel, onSave, recordMode =
       <h3 className="text-xs font-bold text-slate-100">{p.id ? 'Change person' : 'New person'}</h3>
       {BRAND.las && !recordMode && <RecordPersonPicker value={p} onUse={setP}/>}
 
+      <PersonRecordEditor value={p} onChange={set}/>
       {/* roles */}
       <fieldset>
         <legend className="label">Roles (first is primary)</legend>
@@ -978,7 +980,7 @@ function VehicleForm({ value, roles, persons, codes, inc, onCancel, onSave }: {
 
   return (
     <form className="panel space-y-3 rounded-lg p-3" onSubmit={submit} aria-label={v.id ? 'Change vehicle' : 'New vehicle'}>
-      <h3 className="text-xs font-bold text-slate-100">{v.id ? 'Change vehicle' : 'New vehicle'}</h3>
+      <h3 className="text-xs font-bold text-slate-100">{v.id ? 'Change vehicle' : 'New vehicle'}</h3><label className="label">Vehicle affiliation<select className="input" value={v.ownership||''} onChange={e=>set({ownership:e.target.value})}><option value="">No affiliation recorded</option><option value="agency">Owned by Lakes Area Security</option><option value="employee">Owned by LAS employee</option></select></label><label className="label">Owner / employee name<input className="input" value={v.ownerName||''} maxLength={120} onChange={e=>set({ownerName:e.target.value})}/></label><CautionEditor vehicle value={v.cautions} onChange={cautions=>set({cautions})}/>
 
       <fieldset>
         <legend className="label">Roles (first is primary)</legend>

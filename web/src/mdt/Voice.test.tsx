@@ -134,3 +134,11 @@ it('starts automatically with local voices and cancels on lock',async()=>{
  await waitFor(()=>expect(screen.getByText('Voice off')).toBeTruthy())
  expect(cancel).toHaveBeenCalled()
 })
+
+it('reads local warrant, registry and vehicle flags alongside core cautions',()=>{
+ const notices=voiceSnapshot({...m,incident:{...m.incident!,persons:[{id:'P1',role:'subject',name:'Test Person',registeredSexOffender:true,warrants:[{number:'W1',agency:'Test court',offense:'Fixture',status:'active'}]}],vehicles:[{id:'V1',role:'involved',plate:'TEST1',ownership:'agency',cautions:[{type:'Stolen plate',level:'danger'}]}]}},[])
+ expect(notices.find(n=>n.id.startsWith('record-details:'))?.text).toContain('Active local warrant entry')
+ expect(notices.find(n=>n.id.startsWith('record-details:'))?.text).toContain('Registered sex offender')
+ expect(notices.find(n=>n.id.startsWith('vehicle-details:'))?.text).toContain('Stolen plate')
+ expect(notices.find(n=>n.id==='caution:dog')?.text).toContain('Safety warning')
+})

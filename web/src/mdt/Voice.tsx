@@ -1,3 +1,4 @@
+import {recordDetailsAnnouncement} from '../records/RecordDetails'
 import { useEffect, useRef, useState } from 'react'
 import { Volume2, VolumeX, RotateCcw, Info } from 'lucide-react'
 import type { MDTView } from './Mdt'
@@ -20,6 +21,8 @@ export function voiceSnapshot(m: MDTView, messages: CommView[], weather: Weather
   if(lookupCaution)add('lookup-caution:'+lookupCaution.id,lookupCaution.text,-1)
   if(fbiCaution)add('fbi-caution:'+fbiCaution.id,fbiCaution.text,0)
   if(i) {
+ for(const v of i.vehicles||[])if(!v.removed){const text=recordDetailsAnnouncement(undefined,v.cautions,v.ownership,v.ownerName);if(text)add('vehicle-details:'+i.number+':'+v.id,`Vehicle ${words(v.plate)||words(v.vin)}. ${text}`,0)}
+    for(const p of i.persons||[])if(!p.removed){const text=recordDetailsAnnouncement(p);if(text)add('record-details:'+i.number+':'+p.id,`${words(p.name)||'Subject'}. ${text}`,0)}
     for(const p of i.persons||[])if(p.agencyEmployee&&!p.removed)add('employee:'+i.number+':'+p.id,`Agency employee information. ${words(p.name)||'A subject on this call'} is an employee of Lakes Area Security.`,2)
     add('call-status',`Call ${i.number}. ${i.status}. Priority ${i.priority}.`)
     if(i.newLocation) add('location-change',`Dispatch changed the call location. ${words(i.newLocation.location.address)}`,0)

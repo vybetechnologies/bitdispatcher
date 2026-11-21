@@ -68,6 +68,11 @@ export type Incident = { files?: IncidentFile[]; droneClips?: DroneClip[]; proto
 }
 
 export type Person = {
+ registeredSexOffender?: boolean
+ offenderProfileUrl?: string
+ photo?: string
+ cautions?: import('./records/RecordDetails').RecordCaution[]
+ warrants?: import('./records/RecordDetails').PersonWarrant[]
 	 agencyEmployee?: boolean
 	 recordId?: string
   id: string; role: string; name?: string; aliases?: string[]; dob?: string; sex?: string; race?: string; height?: string; weight?: string; hair?: string; eyes?: string
@@ -75,6 +80,9 @@ export type Person = {
   added?: string; addedBy?: string; updated?: string; removed?: boolean
 }
 export type Vehicle = {
+ cautions?: import('./records/RecordDetails').RecordCaution[]
+ ownership?: string
+ ownerName?: string
   id: string; role: string; plate?: string; state?: string; vin?: string; year?: string; make?: string; model?: string; color?: string; body?: string; description?: string
   driver?: string; owner?: string; contact?: string; direction?: string; notes?: string; added?: string; addedBy?: string; updated?: string; removed?: boolean
 }

@@ -307,7 +307,7 @@ func (s *Server) desktopRecords(w http.ResponseWriter, r *http.Request, se *auth
 			for _, f := range st.LASPersonFlags(record.ID, p, now) {
 				flags = append(flags, st.FlagFor(f, cad.DutyOf(a), a.Role))
 			}
-			hit := mdtLookupHit{Record: record.ID, Source: record.Source, Seen: record.Updated, Name: record.Name, DOB: record.DOB, Sex: record.Sex, Description: record.Description, Plate: record.Plate, State: record.State, VIN: record.VIN, Year: record.Year, Make: record.Make, Model: record.Model, Color: record.Color, Body: record.Body, Safety: record.Safety || len(flags) > 0, Flags: flags}
+			hit := mdtLookupHit{Cautions: record.Cautions, Ownership: record.Ownership, OwnerName: record.OwnerName, Record: record.ID, Source: record.Source, Seen: record.Updated, Name: record.Name, DOB: record.DOB, Sex: record.Sex, Description: record.Description, Plate: record.Plate, State: record.State, VIN: record.VIN, Year: record.Year, Make: record.Make, Model: record.Model, Color: record.Color, Body: record.Body, Safety: record.Safety || len(flags) > 0, Flags: flags}
 			if record.Kind == "person" {
 				hit.Person = &p
 			}

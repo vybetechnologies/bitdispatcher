@@ -34,7 +34,7 @@ try{
    else if(path==='/comms')data={items:[],priorities:[]}
    else if(path==='/weather/alerts')data={features:[],checked:now,scope:'Cass / Clay',stale:false}
    else if(path==='/rms/reports')data=[{number:'R-TEST-1',status:'draft',author:'fixture',updated:now,location:'Synthetic training location',offenses:[],people:[],property:[],vehicles:[]}]
-   else if(path==='/mdt/records/search')data={kind:'person',items:[],source:'Test local records',searchedAt:now}
+   else if(path==='/mdt/records/search'){const q=JSON.parse(request.postData()||'{}');data={kind:q.kind,items:q.kind==='person'?[{record:'P-TEST',seen:now,name:'Test Person',person:{registeredSexOffender:true,offenderProfileUrl:'https://registry.example/fixture',warrants:[{number:'W-TEST',agency:'Test court',offense:'Fixture charge',status:'active'}],cautions:[{type:'Weapons',level:'danger',note:'Fixture caution'}]}}]:[{record:'V-TEST',seen:now,plate:'TEST123',ownership:'employee',ownerName:'Test Employee',cautions:[{type:'Stolen plate',level:'danger'}]}],source:'Test local records',searchedAt:now}}
    else if(path==='/mdt/offline/records')data={records:[],at:now}
    else if(path==='/mdt/windows-release')data={Available:true,Version:'test'}
    else if(path.startsWith('/map/')||path==='/mdt/offline/map-package'){await route.fulfill({status:404,body:''});return}
@@ -63,15 +63,28 @@ try{
   await page.getByRole('button',{name:'Voice settings',exact:true}).click()
   await page.getByRole('dialog',{name:'Voice settings'}).waitFor();await page.keyboard.press('Escape')
   await page.getByRole('button',{name:'Persons & vehicles',exact:true}).click()
-  await page.getByRole('dialog').waitFor();await page.keyboard.press('Escape')
+  await page.getByRole('dialog').waitFor()
+  await page.getByLabel('Name or alias').fill('Test Person')
+  await page.getByRole('button',{name:'Search LAS records'}).click()
+  await page.getByRole('link',{name:'Official offender profile'}).waitFor()
+  assert(await page.getByText('Warrant W-TEST · ACTIVE').count()===1)
+  await page.getByRole('tab',{name:'Vehicles',exact:true}).click()
+  await page.getByLabel('Plate',{exact:true}).fill('TEST123')
+  await page.getByRole('button',{name:'Search LAS records'}).click()
+  await page.getByText('LAS employee-owned vehicle · Test Employee').waitFor()
+  await page.getByText('Stolen plate',{exact:true}).waitFor()
+  await page.keyboard.press('Escape')
   await page.getByRole('button',{name:/Mark out…/}).click();await page.getByLabel('Mark-out note').fill('Synthetic note')
   await page.screenshot({path:`${out}/${native?'windows':'web'}-markout.png`})
   fixture.unit.status='dispatched';fixture.unit.incident='TEST-CALL'
   fixture.typeName='Alarm response';fixture.summary='Synthetic assignment summary for layout verification.'
   fixture.cautions=[{id:'test-caution',name:'Officer safety',note:'Synthetic caution remains visible'}]
-  fixture.incident={number:'TEST-CALL',type:'alarm',priority:2,created:now,location:{address:'Training location, Fargo',lat:46.879,lon:-96.79},units:[{unit:'TEST-01',status:'dispatched'}],timeline:[{seq:1,kind:'note',at:now,text:'Synthetic dispatch note',actor:'fixture'}],persons:[{id:'test-person',name:'Test Person',role:'involved',safety:true}],vehicles:[{id:'test-vehicle',plate:'TEST123',state:'ND',role:'involved'}],files:[]}
+  fixture.incident={number:'TEST-CALL',type:'alarm',priority:2,created:now,location:{address:'Training location, Fargo',lat:46.879,lon:-96.79},units:[{unit:'TEST-01',status:'dispatched'}],timeline:[{seq:1,kind:'note',at:now,text:'Synthetic dispatch note',actor:'fixture'}],persons:[{id:'test-person',name:'Test Person',role:'involved',safety:true,registeredSexOffender:true,offenderProfileUrl:'https://registry.example/fixture',warrants:[{number:'W-TEST',agency:'Test court',offense:'Fixture charge',status:'active'}],cautions:[{type:'Weapons',level:'danger',note:'Fixture caution'}]}],vehicles:[{id:'test-vehicle',plate:'TEST123',state:'ND',role:'involved',ownership:'agency',cautions:[{type:'Stolen plate',level:'caution'}]}],files:[]}
   await page.reload();await page.getByText('Synthetic caution remains visible',{exact:false}).waitFor()
   assert(await page.getByRole('button',{name:/En route/}).isEnabled())
+  assert(await page.getByRole('link',{name:'Official offender profile'}).count()===1)
+  assert(await page.getByText('Warrant W-TEST · ACTIVE').count()===1)
+  assert(await page.getByText('Lakes Area Security vehicle',{exact:true}).count()===1)
   await page.getByText('Synthetic dispatch note',{exact:false}).scrollIntoViewIfNeeded()
   assert(await emergency.isVisible())
   await page.screenshot({path:`${out}/${native?'windows':'web'}-assigned.png`})

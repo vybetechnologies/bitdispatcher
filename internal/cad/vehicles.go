@@ -58,6 +58,15 @@ func (s Settings) CodeLists() []vehcodes.List {
 
 // normVehicle tidies a vehicle and checks its codes and links.
 func (e *Engine) normVehicle(in *Incident, v *Vehicle) error {
+	if err := ValidateRecordCautions(v.Cautions); err != nil {
+		return err
+	}
+	if v.Ownership != "" && v.Ownership != "agency" && v.Ownership != "employee" {
+		return fmt.Errorf("invalid vehicle ownership")
+	}
+	if len(v.OwnerName) > 120 {
+		return fmt.Errorf("owner name too long")
+	}
 	v.Roles = cleanList(append([]string{v.Role}, v.Roles...))
 	for i := range v.Roles {
 		v.Roles[i] = strings.ToLower(v.Roles[i])

@@ -1,0 +1,91 @@
+package cad
+
+import (
+	"bytes"
+	"encoding/base64"
+	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
+	"net/url"
+	"strings"
+	"time"
+)
+
+// These attributed local entries supplement, rather than replace, core flags.
+type RecordCaution struct {
+	Type  string `json:"type"`
+	Level string `json:"level"`
+	Note  string `json:"note,omitempty"`
+}
+type PersonWarrant struct {
+	Number       string `json:"number"`
+	Agency       string `json:"agency"`
+	Offense      string `json:"offense"`
+	Status       string `json:"status"`
+	Issued       string `json:"issued,omitempty"`
+	Expires      string `json:"expires,omitempty"`
+	Instructions string `json:"instructions,omitempty"`
+}
+
+func ValidateRecordCautions(items []RecordCaution) error {
+	if len(items) > 30 {
+		return fmt.Errorf("at most 30 cautions")
+	}
+	for _, c := range items {
+		if strings.TrimSpace(c.Type) == "" || len(c.Type) > 80 || len(c.Note) > 600 || (c.Level != "info" && c.Level != "caution" && c.Level != "danger") {
+			return fmt.Errorf("cautions require a type and valid level; notes are limited to 600 characters")
+		}
+	}
+	return nil
+}
+func ValidatePersonRecordDetails(p *Person) error {
+	if p.OffenderProfileURL != "" {
+		u, err := url.Parse(p.OffenderProfileURL)
+		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || len(p.OffenderProfileURL) > 1000 {
+			return fmt.Errorf("offender profile must be a valid HTTPS registry URL")
+		}
+	}
+	if err := ValidateRecordCautions(p.Cautions); err != nil {
+		return err
+	}
+	if len(p.Warrants) > 30 {
+		return fmt.Errorf("at most 30 warrants")
+	}
+	for _, w := range p.Warrants {
+		if strings.TrimSpace(w.Number) == "" || strings.TrimSpace(w.Agency) == "" || strings.TrimSpace(w.Offense) == "" || len(w.Number) > 100 || len(w.Agency) > 120 || len(w.Offense) > 600 || len(w.Instructions) > 600 {
+			return fmt.Errorf("warrant number, issuing agency and offense are required and must fit field limits")
+		}
+		if w.Status != "active" && w.Status != "recalled" && w.Status != "served" && w.Status != "expired" {
+			return fmt.Errorf("invalid warrant status")
+		}
+		for _, date := range []string{w.Issued, w.Expires} {
+			if date != "" {
+				if _, err := time.Parse("2006-01-02", date); err != nil {
+					return fmt.Errorf("invalid warrant date")
+				}
+			}
+		}
+		if w.Issued != "" && w.Expires != "" && w.Expires < w.Issued {
+			return fmt.Errorf("warrant expiration precedes issue date")
+		}
+	}
+	if p.Photo != "" {
+		if len(p.Photo) > 350000 {
+			return fmt.Errorf("subject photo is too large")
+		}
+		parts := strings.SplitN(p.Photo, ",", 2)
+		if len(parts) != 2 || (parts[0] != "data:image/jpeg;base64" && parts[0] != "data:image/png;base64") {
+			return fmt.Errorf("subject photo must be JPEG or PNG")
+		}
+		b, err := base64.StdEncoding.DecodeString(parts[1])
+		if err != nil {
+			return fmt.Errorf("invalid subject photo")
+		}
+		cfg, format, err := image.DecodeConfig(bytes.NewReader(b))
+		if err != nil || cfg.Width < 1 || cfg.Height < 1 || cfg.Width > 1600 || cfg.Height > 1600 || (format == "jpeg" && parts[0] != "data:image/jpeg;base64") || (format == "png" && parts[0] != "data:image/png;base64") {
+			return fmt.Errorf("invalid subject photo dimensions or format")
+		}
+	}
+	return nil
+}

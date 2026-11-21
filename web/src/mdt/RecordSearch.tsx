@@ -1,3 +1,5 @@
+import { RecordDetailsDisplay, recordDetailsAnnouncement } from '../records/RecordDetails'
+import type {RecordCaution} from '../records/RecordDetails'
 import { useEffect, useRef, useState } from 'react'
 import { Car, Search, ShieldAlert, UserRound } from 'lucide-react'
 import { api, errText } from '../api'
@@ -7,21 +9,22 @@ import FbiWanted from './FbiWanted'
 import type {FbiQuery} from './FbiWanted'
 import type { Person } from '../requests/types'
 
-type Hit = { flags?:{id:string;title:string;warning:string;instruction:string}[];person?:Person;incidents?:{incident:string;role:string}[];source?:string; record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
+type Hit = { cautions?:RecordCaution[];ownership?:string;ownerName?:string; flags?:{id:string;title:string;warning:string;instruction:string}[];person?:Person;incidents?:{incident:string;role:string}[];source?:string; record:string; incident:string; seen:string; name?:string; dob?:string; sex?:string; description?:string; safetyConcern?:boolean; plate?:string; state?:string; vin?:string; year?:string; make?:string; model?:string; color?:string; body?:string }
 type Results = { providerMessage?:string; kind:'person'|'vehicle'; items:Hit[]; more:boolean; source:string; searchedAt:string }
 export function personCautionAnnouncement(result:Results):string {
- if(result.kind!=='person')return ''
+ const extra=result.items.map(h=>{const text=recordDetailsAnnouncement(h.person,h.cautions,h.ownership,h.ownerName);return text?`Possible match ${h.name||h.plate||h.vin||'record'}. ${text}`:''}).filter(Boolean).join(' ')
+ if(result.kind!=='person')return extra
  const cautions=result.items.filter(h=>h.safetyConcern||h.person?.safety||h.flags?.length)
  const employees=result.items.filter(h=>h.person?.agencyEmployee)
  const employeeInfo=employees.length?`Agency employee information. ${employees.slice(0,3).map(h=>`Possible match ${h.name||'unnamed person'} is an employee of Lakes Area Security.`).join(' ')}`:''
- if(!cautions.length)return employeeInfo
+ if(!cautions.length)return [extra,employeeInfo].filter(Boolean).join(' ')
  const details=cautions.slice(0,3).map(h=>{
   const flags=(h.flags||[]).map(f=>[f.title,f.warning,f.instruction].filter(Boolean).join('. '))
   const n=h.person?.safetyNote
   if(!flags.length&&n)flags.push([n.title,n.reason,n.weapons,n.instruction].filter(Boolean).join('. '))
   return `Possible match ${h.name||'unnamed person'}. ${flags.join('. ')||'Recorded caution. Contact dispatch for details.'}`
  })
- return `Officer safety warning. ${cautions.length} possible person ${cautions.length===1?'match has a caution':'matches have cautions'}. ${details.join('. ')}${cautions.length>3?'. Additional cautions are shown in the search results.':''} ${employeeInfo}`.trim()
+ return `Officer safety warning. ${cautions.length} possible person ${cautions.length===1?'match has a caution':'matches have cautions'}. ${details.join('. ')}${cautions.length>3?'. Additional cautions are shown in the search results.':''} ${employeeInfo} ${extra}`.trim()
 }
 
 /** Private local-record lookup, kept inside MDT so it never changes the user's duty or assigned unit. */
@@ -87,7 +90,7 @@ export default function RecordSearch({onClose,onCaution,onFbiCaution}:{onClose:(
      <div className="flex flex-wrap items-start gap-2"><h3 className="flex-1 text-base font-semibold text-slate-100">{result.kind==='person'?hit.name:[hit.plate||'No plate recorded',hit.state].filter(Boolean).join(' · ')}</h3><span className="chip border border-slate-600 text-xs text-slate-300">Local record · possible match</span></div>
      {result.kind==='person'?<><p className="mt-1 text-sm text-slate-300">DOB {hit.dob||'not recorded'}{hit.sex?` · Sex ${hit.sex}`:''}</p>{hit.description&&<p className="mt-1 text-sm text-slate-400">{hit.description}</p>}</>:<><p className="mt-1 text-sm text-slate-300">{[hit.color,hit.year,hit.make,hit.model,hit.body].filter(Boolean).join(' · ')||'Description not recorded'}</p><p className="mt-1 font-mono text-sm text-slate-400">VIN {hit.vin||'not recorded'}</p></>}
      {result.kind==='vehicle'&&hit.description&&<p className="mt-1 text-sm text-slate-400">{hit.description}</p>}
-     {hit.person&&<PersonDetails person={hit.person}/>}
+     <RecordDetailsDisplay person={hit.person} cautions={hit.cautions} ownership={hit.ownership} ownerName={hit.ownerName}/>{hit.person&&<PersonDetails person={hit.person}/>}
      {hit.person?.agencyEmployee&&<p className="mt-2 rounded border border-teal-600 bg-teal-950/40 p-2 text-sm font-semibold text-teal-200">LAS employee · agency affiliation (informational)</p>}
      {hit.flags?.map(f=><div key={f.id} role="alert" className="mt-2 rounded border border-rose-700 bg-rose-950/40 p-2 text-sm text-rose-100"><b>Officer safety · {f.title}</b><p>{f.warning}</p><p>{f.instruction}</p><span className="font-mono text-xs">{f.id}</span></div>)}
      {!!hit.incidents?.length&&<p className="mt-2 text-xs text-amber-200">Connected incidents: {hit.incidents.map(r=>`${r.incident} (${r.role})`).join(' · ')}</p>}

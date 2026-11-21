@@ -17,7 +17,7 @@ func TestLASRichPersonRecordConnectsIncidentAndMDTWithCoreFlags(t *testing.T) {
 	s.Eng.SaveUnit(cad.SystemActor, cad.UnitDef{ID: "SEC1", Type: "patrol", Agency: "LAS"})
 	s.Auth.SetMDTUnit("admin", "SEC1")
 	admin := login(t, ts, "admin", pw["admin"])
-	p := cad.Person{First: "Shared", Middle: "Test", Last: "Record", Role: "subject", DOB: "1980-02-03", SSN: "123456789", DL: "FULL-LICENCE", DLState: "ND", IDType: "passport", IDNumber: "FULL-OTHER-ID", IDState: "US", Address: "Test address", Phones: []cad.PersonPhone{{Number: "7015550100", Type: "mobile", Source: "records", Verified: true}}, Race: "W", Ethnicity: "N", Height: "510", Weight: "180", Build: "medium", Hair: "BRO", Eyes: "BLU", Clothing: "Test coat", SMT: "Test tattoo", ApproxAge: "46", Notes: "Full fixture notes", Safety: true, SafetyNote: &cad.SafetyConcern{Title: "Core safety fixture", Reason: "Synthetic test concern", Source: "Test fixture", Instruction: "Contact dispatch", Scope: "permanent"}}
+	p := cad.Person{RegisteredSexOffender: true, OffenderProfileURL: "https://registry.example/fixture", Cautions: []cad.RecordCaution{{Type: "Weapons", Level: "danger", Note: "Fixture caution"}}, Warrants: []cad.PersonWarrant{{Number: "W-TEST", Agency: "Test court", Offense: "Fixture charge", Status: "active"}}, First: "Shared", Middle: "Test", Last: "Record", Role: "subject", DOB: "1980-02-03", SSN: "123456789", DL: "FULL-LICENCE", DLState: "ND", IDType: "passport", IDNumber: "FULL-OTHER-ID", IDState: "US", Address: "Test address", Phones: []cad.PersonPhone{{Number: "7015550100", Type: "mobile", Source: "records", Verified: true}}, Race: "W", Ethnicity: "N", Height: "510", Weight: "180", Build: "medium", Hair: "BRO", Eyes: "BLU", Clothing: "Test coat", SMT: "Test tattoo", ApproxAge: "46", Notes: "Full fixture notes", Safety: true, SafetyNote: &cad.SafetyConcern{Title: "Core safety fixture", Reason: "Synthetic test concern", Source: "Test fixture", Instruction: "Contact dispatch", Scope: "permanent"}}
 	code, body := admin.do("POST", "/api/admin/las-records", cad.LASRecord{Kind: "person", Source: "Fixture", Person: &p}, true)
 	if code != 201 {
 		t.Fatal(code, string(body))
@@ -61,7 +61,7 @@ func TestLASRichPersonRecordConnectsIncidentAndMDTWithCoreFlags(t *testing.T) {
 	code, body = admin.do("POST", "/api/mdt/records/search", map[string]string{"kind": "person", "name": "Shared Record", "purpose": "patrol"}, true)
 	var result struct{ Items []mdtLookupHit }
 	json.Unmarshal(body, &result)
-	if code != 200 || len(result.Items) != 1 || result.Items[0].Person == nil || result.Items[0].Person.SSN != "123-45-6789" || len(result.Items[0].Flags) != 1 || len(result.Items[0].Incidents) != 2 {
+	if code != 200 || len(result.Items) != 1 || result.Items[0].Person == nil || result.Items[0].Person.SSN != "123-45-6789" || !result.Items[0].Person.RegisteredSexOffender || len(result.Items[0].Person.Warrants) != 1 || len(result.Items[0].Person.Cautions) != 1 || len(result.Items[0].Flags) != 1 || len(result.Items[0].Incidents) != 2 {
 		t.Fatal("MDT full profile/link/flag", code, string(body))
 	}
 	// Correcting identity details keeps already approved core flags associated.

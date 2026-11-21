@@ -99,10 +99,15 @@ type Security struct {
 
 // Person is someone on an incident: the caller, a victim, a suspect, a witness.
 type Person struct {
-	AgencyEmployee bool   `json:"agencyEmployee,omitempty"` // informational; independent of officer-safety concerns
-	RecordID       string `json:"recordId,omitempty"`
-	ID             string `json:"id"`
-	Role           string `json:"role"` // caller, victim, suspect, witness, complainant, subject, patient, other
+	RegisteredSexOffender bool            `json:"registeredSexOffender,omitempty"`
+	OffenderProfileURL    string          `json:"offenderProfileUrl,omitempty"`
+	Photo                 string          `json:"photo,omitempty"`
+	Cautions              []RecordCaution `json:"cautions,omitempty"`
+	Warrants              []PersonWarrant `json:"warrants,omitempty"`
+	AgencyEmployee        bool            `json:"agencyEmployee,omitempty"` // informational; independent of officer-safety concerns
+	RecordID              string          `json:"recordId,omitempty"`
+	ID                    string          `json:"id"`
+	Role                  string          `json:"role"` // caller, victim, suspect, witness, complainant, subject, patient, other
 	// Roles are every role the person has on the incident (Role is the first).
 	Roles []string `json:"roles,omitempty"`
 	// Name is "LAST, FIRST MIDDLE SUFFIX", made from the separate parts when they are given.
@@ -155,17 +160,20 @@ type Person struct {
 
 // Vehicle is a vehicle on an incident.
 type Vehicle struct {
-	ID          string `json:"id"`
-	Role        string `json:"role"` // suspect, victim, involved, witness, abandoned, other
-	Plate       string `json:"plate,omitempty"`
-	State       string `json:"state,omitempty"`
-	VIN         string `json:"vin,omitempty"`
-	Year        string `json:"year,omitempty"`
-	Make        string `json:"make,omitempty"`
-	Model       string `json:"model,omitempty"`
-	Color       string `json:"color,omitempty"`
-	Body        string `json:"body,omitempty"`
-	Description string `json:"description,omitempty"`
+	Cautions    []RecordCaution `json:"cautions,omitempty"`
+	Ownership   string          `json:"ownership,omitempty"`
+	OwnerName   string          `json:"ownerName,omitempty"`
+	ID          string          `json:"id"`
+	Role        string          `json:"role"` // suspect, victim, involved, witness, abandoned, other
+	Plate       string          `json:"plate,omitempty"`
+	State       string          `json:"state,omitempty"`
+	VIN         string          `json:"vin,omitempty"`
+	Year        string          `json:"year,omitempty"`
+	Make        string          `json:"make,omitempty"`
+	Model       string          `json:"model,omitempty"`
+	Color       string          `json:"color,omitempty"`
+	Body        string          `json:"body,omitempty"`
+	Description string          `json:"description,omitempty"`
 	// Roles are every role the vehicle has (Role is the first); PlateType is the NCIC plate type code and
 	// PlateCondition says when there is no readable plate (temporary, partial, unreadable, none, multiple).
 	Roles          []string `json:"roles,omitempty"`

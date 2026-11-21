@@ -26,26 +26,29 @@ type mdtLookupQuery struct {
 	Purpose string `json:"purpose"`
 }
 type mdtLookupHit struct {
-	Flags       []*cad.Flag     `json:"flags,omitempty"`
-	Person      *cad.Person     `json:"person,omitempty"`
-	Incidents   []cad.PersonRef `json:"incidents,omitempty"`
-	Source      string          `json:"source,omitempty"`
-	Record      string          `json:"record"`
-	Incident    string          `json:"incident"`
-	Seen        time.Time       `json:"seen"`
-	Name        string          `json:"name,omitempty"`
-	DOB         string          `json:"dob,omitempty"`
-	Sex         string          `json:"sex,omitempty"`
-	Description string          `json:"description,omitempty"`
-	Safety      bool            `json:"safetyConcern,omitempty"`
-	Plate       string          `json:"plate,omitempty"`
-	State       string          `json:"state,omitempty"`
-	VIN         string          `json:"vin,omitempty"`
-	Year        string          `json:"year,omitempty"`
-	Make        string          `json:"make,omitempty"`
-	Model       string          `json:"model,omitempty"`
-	Color       string          `json:"color,omitempty"`
-	Body        string          `json:"body,omitempty"`
+	Cautions    []cad.RecordCaution `json:"cautions,omitempty"`
+	Ownership   string              `json:"ownership,omitempty"`
+	OwnerName   string              `json:"ownerName,omitempty"`
+	Flags       []*cad.Flag         `json:"flags,omitempty"`
+	Person      *cad.Person         `json:"person,omitempty"`
+	Incidents   []cad.PersonRef     `json:"incidents,omitempty"`
+	Source      string              `json:"source,omitempty"`
+	Record      string              `json:"record"`
+	Incident    string              `json:"incident"`
+	Seen        time.Time           `json:"seen"`
+	Name        string              `json:"name,omitempty"`
+	DOB         string              `json:"dob,omitempty"`
+	Sex         string              `json:"sex,omitempty"`
+	Description string              `json:"description,omitempty"`
+	Safety      bool                `json:"safetyConcern,omitempty"`
+	Plate       string              `json:"plate,omitempty"`
+	State       string              `json:"state,omitempty"`
+	VIN         string              `json:"vin,omitempty"`
+	Year        string              `json:"year,omitempty"`
+	Make        string              `json:"make,omitempty"`
+	Model       string              `json:"model,omitempty"`
+	Color       string              `json:"color,omitempty"`
+	Body        string              `json:"body,omitempty"`
 }
 
 func lookupID(value string) string {
@@ -193,7 +196,7 @@ func (s *Server) mdtLookupRoutes() {
 						if v.Removed || plate != "" && !strings.Contains(lookupID(v.Plate), plate) || vin != "" && !strings.Contains(lookupID(v.VIN), vin) || q.State != "" && !strings.EqualFold(v.State, q.State) {
 							continue
 						}
-						hits = append(hits, mdtLookupHit{Record: v.ID, Incident: in.Number, Seen: in.Created, Plate: v.Plate, State: v.State, VIN: v.VIN, Year: v.Year, Make: v.Make, Model: v.Model, Color: v.Color, Body: v.Body})
+						hits = append(hits, mdtLookupHit{Cautions: v.Cautions, Ownership: v.Ownership, OwnerName: v.OwnerName, Record: v.ID, Incident: in.Number, Seen: in.Created, Plate: v.Plate, State: v.State, VIN: v.VIN, Year: v.Year, Make: v.Make, Model: v.Model, Color: v.Color, Body: v.Body})
 					}
 				}
 			}
@@ -221,7 +224,7 @@ func (s *Server) mdtLookupRoutes() {
 					if plate != "" && !strings.Contains(lookupID(r.Plate), plate) || vin != "" && !strings.Contains(lookupID(r.VIN), vin) || q.State != "" && !strings.EqualFold(q.State, r.State) {
 						continue
 					}
-					hits = append(hits, mdtLookupHit{Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
+					hits = append(hits, mdtLookupHit{Cautions: r.Cautions, Ownership: r.Ownership, OwnerName: r.OwnerName, Source: lasLookupSource(r), Record: r.ID, Seen: r.Updated, Plate: r.Plate, State: r.State, VIN: r.VIN, Year: r.Year, Make: r.Make, Model: r.Model, Color: r.Color, Body: r.Body, Description: r.Description, Safety: r.Safety})
 				}
 			}
 		})
